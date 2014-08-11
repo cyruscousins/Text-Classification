@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>10.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{B52D544A-602D-4EB2-B58D-B6557B285C5E}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>TextCharacteristicLearner</RootNamespace>
+    <AssemblyName>TextCharacteristicLearner</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <Externalconsole>true</Externalconsole>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <Externalconsole>true</Externalconsole>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Main.cs" />
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Whetstone\Whetstone.cs" />
+    <Compile Include="Multiset.cs" />
+    <Compile Include="DatabaseLoader.cs" />
+    <Compile Include="TextProcessor.cs" />
+    <Compile Include="Database.cs" />
+    <Compile Include="EventSeries\EventSeriesConsumer.cs" />
+    <Compile Include="DiscreteEventSeries.cs" />
+    <Compile Include="Whetstone\TupleStruct.cs" />
+    <Compile Include="Whetstone\FunctionalList.cs" />
+    <Compile Include="MultisetKmer.cs" />
+    <Compile Include="Genetic\Optimizer.cs" />
+    <Compile Include="LatexExtensions.cs" />
+    <Compile Include="Whetstone\DataStructureExtensions.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesRegression\IEventSeriesScalarRegressor.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesRegression\ItemFrequencyRegressor.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesRegression\ItemKmerFrequencyRegressor.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesRegression\ItemVarKmerFrequencyRegressor.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\IFeatureSynthesizer.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\RegressorFeatureSynthesizer.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\VarKmerFrequencyFeatureSynthesizer.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\IProbabalisticClassifier.cs" />
+    <Compile Include="Whetstone\Math.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\ProbabalisticKnn.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesProbabalisticClassifier\SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesClassifier.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesProbabalisticClassifier\IEventSeriesProbabalisticClassifier.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\TextFeatureSynthesizer.cs" />
+    <Compile Include="MachineLearning\Production\TextClassifierFactory.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\CompoundFeatureSynthesizer.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\NullProbabalisticClassifier.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\C45.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\PerceptronCollection.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\LatinLanguageFeatureSynthesizer.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\VarKmerFrequencyFeatureSynthesizerToRawFrequencies.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Folder Include="Whetstone\" />
+    <Folder Include="EventSeries\" />
+    <Folder Include="Genetic\" />
+    <Folder Include="MachineLearning\" />
+    <Folder Include="MachineLearning\EventSeries\" />
+    <Folder Include="MachineLearning\EventSeries\EventSeriesProbabalisticClassifier\" />
+    <Folder Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\" />
+    <Folder Include="MachineLearning\Production\" />
+    <Folder Include="MachineLearning\LatexReport\" />
+  </ItemGroup>
+</Project>
