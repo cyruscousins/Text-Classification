@@ -37,6 +37,47 @@ namespace Whetstone
 		public static uint Sum(this IEnumerable<uint> items){
 			return items.Aggregate ((uint)0, (sum, val) => sum + val);
 		}
+
+		public static double[] VectorMean(this IEnumerable<IList<double>> vectors){
+			double[] result = new double[vectors.First ().Count];
+
+			foreach(IEnumerable<double> array in vectors){
+				int i = 0; //TODO: This is a mess.
+				foreach(double d in array){
+					result[i++] += d;
+				}
+			}
+
+			result.MapInPlace(val => val * (1.0 / result.Length));
+			return result;
+		}
+
+		//This function returns NaN on an empty set. of values.
+		public static double Stdev(this IEnumerable<double> vals, double mean){
+			double ret = 0;
+			int count = 0;
+			foreach(double val in vals){
+				ret += (val - mean) * (val - mean);
+				count++;
+			}
+			return ret.Sqrt () / (count - 1);
+		}
+
+		public static double Stdev(this IList<double> vals, double mean){
+			double ret = 0;
+			foreach(double val in vals){
+				ret += (val - mean) * (val - mean);
+			}
+			return ret.Sqrt () / vals.Count;
+		}
+
+		public static double Stdev(this IEnumerable<double> vals){
+			return Stdev (vals, vals.Average());
+		}
+
+		public static double Stdev(this IList<double> vals){
+			return Stdev (vals, vals.Average ());
+		}
 	}
 
 	public static class WhetstoneListMath{

@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Collections;
 using System.Collections.Generic;
 
+using System.Diagnostics;
 using System.Linq;
 
 namespace Whetstone{
@@ -21,8 +22,8 @@ namespace Whetstone{
 		}
 
 		//The classic antifunctional higher order function, map in place applies an operation in place to every element of an array.
-		public static A[] MapInPlace<A>(this A[] arr, Func<A, A> op){
-			for(int i = 0; i < arr.Length; i++){
+		public static IList<A> MapInPlace<A>(this IList<A> arr, Func<A, A> op){
+			for(int i = 0; i < arr.Count; i++){
 				arr[i] = op(arr[i]);
 			}
 			return arr;
@@ -97,6 +98,23 @@ namespace Whetstone{
 			}
 		}
 
+		//TODO: version with a lambda to produce a result (shouldn't always be Tuple<Ty, Ty>).
+		public static IEnumerable<Tuple<Ty, Ty>> AdjacentPairs<Ty>(this IEnumerable<Ty> vals){
+			List<Tuple<Ty, Ty>> result = new List<Tuple<Ty, Ty>>();
+
+			IEnumerator<Ty> e = vals.GetEnumerator();
+
+			while(e.MoveNext ()){
+				Ty a = e.Current;
+				e.MoveNext ();
+				Ty b = e.Current;
+
+				result.Add (new Tuple<Ty, Ty>(a, b));
+			}
+
+			return result;
+		}
+
 		//TODO: Does this exist?  It's a bit like a mix between "Filter" and "GroupBy"
 		public static Tuple<IEnumerable<Ty>, IEnumerable<Ty>> Partition<Ty>(this IEnumerable<Ty> data, Predicate<Ty> predicate){
 			List<Ty> a = new List<Ty>();
@@ -157,6 +175,13 @@ namespace Whetstone{
 			return source.Shuffle (new Random());
 		}
 
+
+		//Zip to tuple:
+
+		public static IEnumerable<Tuple<A, B>> Zip<A, B>(this IEnumerable<A> listA, IEnumerable<B> listB){
+			return listA.Zip (listB, (a, b) => new Tuple<A, B>(a, b));
+		}
+
 		//TODO: Move to ArrayUtilities
 		public static void Swap<A>(this A[] arr, int i0, int i1){
 			A temp = arr[i0];
@@ -187,6 +212,32 @@ namespace Whetstone{
 		}
 
 		//TODO percentiles.
+
+
+
+		public static Ty[,] Transpose<Ty>(this IEnumerable<IEnumerable<Ty>> data){
+			int oHeight = data.Count ();
+			int oWidth = data.First ().Count ();
+
+			Trace.Assert(data.Select (item => item.Count ()).Where(val => val != oWidth).IsEmpty ()); //Make sure each is the same length.
+
+			Ty[,] result = new Ty[oWidth, oHeight]; //(Backwards)
+
+			int x = 0;
+			int y = 0;
+			//Blast Processing!
+			foreach(IEnumerable<Ty> oRow in data){
+				foreach(Ty oCell in oRow){
+					result[y,x] = oCell;
+					y++;
+				}
+				x++;
+				y = 0;
+			}
+
+			return result;
+
+		}
 	}
 
 	/*

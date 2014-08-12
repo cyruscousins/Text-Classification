@@ -68,11 +68,12 @@ namespace TextCharacteristicLearner
 		}
 		*/
 
-		public static void TestLatex(){
+		public static void TestLatex ()
+		{
 
-			bool test = true;
+			bool test = false;
 
-			DiscreteSeriesDatabase<string> allData = LoadRegionsDatabase(test);
+			DiscreteSeriesDatabase<string> allData = LoadRegionsDatabase (test, true);
 
 			/*
 			IFeatureSynthesizer<string> testSynth = new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, true);
@@ -89,48 +90,50 @@ namespace TextCharacteristicLearner
 			}
 			*/
 
-			LatexDocument doc = new LatexDocument("Spanish Language Dialect Analysis", "Cyrus Cousins");
-
-			doc.Append ("\\section{Spanish Language Database Overview}\n\n");
-			doc.Append (allData.DatabaseLatexString("Spanish Language Dialect Analysis", null, 6));
 
 			//TODO: Add length distribution for documents and each type.
 
 			//Create a feature synthesizer
 
 			//IFeatureSynthesizer<string> synth = new RegressorFeatureSynthesizerKmerFrequenciesVarK<string>("region", 8, 2, 100, 3); //Slowld way
-			IFeatureSynthesizer<string> synth = new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, true);
-			synth.Train (allData);
+			//IFeatureSynthesizer<string> synth = new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, true);
 
-			doc.Append ("\\section{Feature Synthesizer and Classifier Overview}\n\n");
-			doc.Append (synth.ClassifierLatexString("Region Classifier", 80));
+			//IEventSeriesProbabalisticClassifier<string> textClassifier // = TextClassifierFactory.TextClassifier ("region", new[]{"region", "type"});
 
-			doc.Append (synth.ClassifierAccuracyLatexString(allData, "region", .8, test ? 1 : 4, .1));
+			//string documentTitle, string author, int width, int height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 8.5, 11, "../../out/spanish/spanish.tex", TextClassifierFactory.RegionsTestClassifiers(), "Spanish Language", allData, "region", test ? 1 : 8);
 
-			//TODO: Show classifiers.
-			//TODO: Profile accuracy, preferably in multiple ways?
-			//TODO: Number formatting.
-			//TODO: Accuracy Random Model comparisons.
+			/*
+			if (classifier is SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>) {
+				IFeatureSynthesizer<string> synthesizer = ((SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>)classifier).synthesizer;
+				
+				//doc.Append ("\\section{Feature Synthesizer Analysis}\n\n");
+				//doc.Append (synthesizer.FeatureSynthesizerLatexString(allData));
+			}
+			*/
 
-			doc.AppendClose ();
-			doc.Write ("../../out/spanish/spanish.tex");
+
 		}
 
-		public static HashSet<String> invalidAuthors = new HashSet<string>("Porst_Report;Posr_Report;Post_Reoprt;Post_Repoert;Post_Report;Post_Repo-rt;POST_REPORT;POST_REPORT,_\'environmental_Laws_Adequate,_Implementation_Weak\';POST_REPORT,_P\';POST_REPORT,_POST_REPORT;Post_Repot;Post_Reprot;Post_Rerport;Post_Roport;Post_Team;PR;Pr);(pr);PR,_PR;RSS;;Rss.;(rss;(rss)".Replace ("_", @"\_").Split (';'));
-
+		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst_Report;Posr_Report;Post_Reoprt;Post_Repoert;Post_Report;Post_Repo-rt;POST_REPORT;POST_REPORT_\'environmental_Laws_Adequate,_Implementation_Weak\';POST_REPORT_P\';POST_REPORT,_POST_REPORT;Post_Repot;Post_Reprot;Post_Rerport;Post_Roport;Post_Team;PR;Pr);(pr);PR,_PR;RSS;;Rss.;(rss;(rss)".Replace ("_", @"\_").Split (';'));
+		private static Dictionary<string, string> manualRenames = "Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.".Replace ("_", @"\_").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 		public static void testNews(){
 
 			//Load the database:
 			DiscreteSeriesDatabase<string> data = new DiscreteSeriesDatabase<string> ();
 
 			using (StreamReader keyfile = File.OpenText("../../res/shirishmedkey")){
+				keyfile.BaseStream.Seek(-70 * 5000, System.IO.SeekOrigin.End);
+				keyfile.ReadLine ();
+//				for(int i = 0; i < 8000; i++) keyfile.ReadLine ();
 				data.LoadTextDatabase ("../../res/shirishmed/", keyfile, 1);
 			}
 
 			//Do some processing on the database
-
 			foreach(DiscreteEventSeries<string> item in data.data){
 				string author = AsciiOnly(item.labels["author"], false).RegexReplace (@"_+", @"_").RegexReplace (@"(?:[<])|(?:^[_,])|(?:$)|(?:\')|\\", "").RegexReplace (@"([#_$&])", @"\$1");
+				author = manualRenames.GetWithDefault (author, author);
+
 				if(author.StartsWith (@"\_")){ //TODO: Why is this not caught by the regex?
 					author = author.Substring (2);
 				}
@@ -145,57 +148,15 @@ namespace TextCharacteristicLearner
 				item.labels["filename"] = item.labels["filename"].RegexReplace ("([#_$&])", "\\$1");
 			}
 
+			//Create the classifier
+			IEventSeriesProbabalisticClassifier<string> classifier = new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
+				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+				new NullProbabalisticClassifier()
+			);
 
-			//Testing author.
-			//Console.WriteLine (data.data.Select (item => item.labels.GetWithDefault("author", "[none]")).Where (item => item.ToUpper()[0] == 'P').Distinct ().Order().FoldToString ("", "", "\n"));
-			//Console.ReadLine ();
-			
-			LatexDocument doc = new LatexDocument("Analysis of the Shirish Pokharel News Database", "Cyrus Cousins", .8, 20, 20);
+			//string documentTitle, string author, int width, int height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteEventSeries<Ty> dataset, string datasetTitle, string criterionByWhichToClassify
+			WriteupGenerator.ProduceClassificationReport<string>("Analysis of the Shirish Pokharel News Database", "Cyrus Cousins", 20, 20, "../../out/news/news.tex", classifier, data, "News", "author");
 
-			doc.Append ("\\section{Input Data Overview}\n\n");
-			doc.Append (data.DatabaseLatexString("News Database Analysis", new[]{"author"}, 20));
-
-			Console.WriteLine ("Generated Database Overview.");
-
-			//TODO: Add length distribution for documents and each type.
-
-			//Create a feature synthesizer
-			//IFeatureSynthesizer<string> synth = new RegressorFeatureSynthesizerKmerFrequenciesVarK<string>("author", 8, 2, 100, 3);
-			IFeatureSynthesizer<string> synth = new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false);
-			synth.Train (data);
-
-			doc.Append ("\\section{Feature Synthesizer and Classifier Overview}\n\n");
-			doc.Append (synth.ClassifierLatexString("Author Classifier", 160));
-
-			Console.WriteLine ("Generated Classifier Overview.");
-
-			doc.Append ("\\section{Classification Report}\n\n");
-			doc.Append (synth.ClassificationReportLatexString(data, "author"));
-			
-			Console.WriteLine ("Generated Classification Report.");
-			
-			//classificationReport.Append ("\\section{Classification Report}\n\n");
-			//classificationReport.Append (synth.ClassificationReportLatexString(data, "author"));
-
-			//accuracyReport.Append("\\section{Classifier Accuracy Report}\n\n");
-			//accuracyReport.Append (synth.ClassifierAccuracyLatexString(data, "author", .8, 8, .05));
-
-
-			doc.Append ("\\section{Classifier Accuracy Report}\n\n");
-			doc.Append ("*\textbf{Section omitted due to abnormally high number of classes.");
-			doc.Append (synth.ClassifierAccuracyLatexString(data, "author", .8, 32, .05));
-			
-			Console.WriteLine ("Generated Classifier Accuracy Report.");
-
-
-			doc.AppendClose ();
-			doc.Write ("../../out/news/news.tex", s => AsciiOnly(s, false)); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
-			
-			//accuracyReport.AppendClose ();
-			//accuracyReport.Write ("../../out/news/accuracy.tex", s => s.Replace ("â", "'").Replace("â", "???").Replace ("â", "'"));
-
-			//classificationReport.AppendClose ();
-			//classificationReport.Write ("../../out/news/classification.tex", s => s.Replace ("â", "'").Replace("â", "???").Replace ("â", "'"));
 		}
 
 
@@ -268,7 +229,7 @@ namespace TextCharacteristicLearner
 
 		}
 
-		public static DiscreteSeriesDatabase<string> LoadRegionsDatabase (bool test = false)
+		public static DiscreteSeriesDatabase<string> LoadRegionsDatabase (bool test = false, bool shorten = false)
 		{
 			//Load training data and create classifier.
 
@@ -320,6 +281,10 @@ namespace TextCharacteristicLearner
 
 			DiscreteSeriesDatabase<string> d = new DiscreteSeriesDatabase<string> ();
 			d.LoadTextDatabase (directory, reader, 3);
+
+			if(shorten){
+				d = new DiscreteSeriesDatabase<string>(d.Select (item => new DiscreteEventSeries<string>(item.labels, item.data.Take (500).ToArray ())));
+			}
 
 			return d;
 		}

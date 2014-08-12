@@ -11,8 +11,8 @@ namespace TextCharacteristicLearner
 	//It does this by running the series through a feature synthesizer to generate a feature vector, then running a proabalistic classifier on the feature vector.
 	public class SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<Ty> : IEventSeriesProbabalisticClassifier<Ty>
 	{
-		IFeatureSynthesizer<Ty> synthesizer;
-		IProbabalisticClassifier classifier;
+		public IFeatureSynthesizer<Ty> synthesizer;
+		public IProbabalisticClassifier classifier;
 
 		public SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier (IFeatureSynthesizer<Ty> synthesizer, IProbabalisticClassifier classifier)
 		{
@@ -35,6 +35,13 @@ namespace TextCharacteristicLearner
 		
 		public double[] Classify(DiscreteEventSeries<Ty> series){
 			return classifier.Classify (synthesizer.SynthesizeFeatures(series));
+		}
+
+		public override string ToString(){
+			return "{SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier: [Training data configuration not yet available]\n" +
+				"Synthesizer = " + synthesizer.ToString () + "," +
+				"Classifier = " + classifier.ToString () +
+					"\n}";
 		}
 	}
 }

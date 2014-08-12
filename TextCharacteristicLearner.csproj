@@ -70,6 +70,11 @@
     <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\PerceptronCollection.cs" />
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\LatinLanguageFeatureSynthesizer.cs" />
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\VarKmerFrequencyFeatureSynthesizerToRawFrequencies.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\EnsembleProbabalisticClassifier.cs" />
+    <Compile Include="LevenshteinDistance.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\ZScoreNormalizer.cs" />
+    <Compile Include="MachineLearning\Auxilliary\MachineLearningAttributes.cs" />
+    <Compile Include="MachineLearning\Auxilliary\Analysis\AccuracyAnalysis.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -82,5 +87,8 @@
     <Folder Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\" />
     <Folder Include="MachineLearning\Production\" />
     <Folder Include="MachineLearning\LatexReport\" />
+    <Folder Include="MachineLearning\Auxilliary\" />
+    <Folder Include="MachineLearning\Auxilliary\Visualization\" />
+    <Folder Include="MachineLearning\Auxilliary\Analysis\" />
   </ItemGroup>
 </Project>

@@ -25,7 +25,7 @@ namespace TextCharacteristicLearner
 
 		public double[] Classify(double[] values){
 			//TODO: Make safety assertion, sizes need to be equal.
-			return values;
+			return values.NormalizeSumInPlace();
 		}
 	}
 }

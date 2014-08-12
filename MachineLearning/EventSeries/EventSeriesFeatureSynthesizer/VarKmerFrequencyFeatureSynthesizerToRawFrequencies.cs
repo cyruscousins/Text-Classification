@@ -92,12 +92,14 @@ namespace TextCharacteristicLearner
 
 			//We now have data for all classes and the baseline.
 
-			IEnumerable<TupleStruct<Kmer<Ty>, double>> characteristicKmers = Enumerable.Range(0, kmerCount).AsParallel ().SelectMany(index => ExtractCharacteristicKmersForClass(index, classes[index].Item2, baseline));
+			IEnumerable<TupleStruct<Kmer<Ty>, double>> characteristicKmers = Enumerable.Range(0, classes.Length).AsParallel ().SelectMany(index => ExtractCharacteristicKmersForClass(index, classes[index].Item2, baseline));
 
 			
 			//Lookup for all kmers.
+
 			kmersOntoIndex = characteristicKmers.OrderByDescending(item => item.Item2).Select(item => item.Item1).Distinct().Take((int)kmersToTake).IndexLookupDictionary();
 			kmerCount = kmersOntoIndex.Count;
+
 
 		}
 

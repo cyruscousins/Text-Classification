@@ -158,6 +158,12 @@ namespace Whetstone
 			}
 		}
 
+		public static IEnumerable<IEnumerable<Ty>> EnumerateRows<Ty>(this Ty[,] matrix){
+			for(int i = matrix.GetLowerBound (0); i <= matrix.GetUpperBound(0); i++){
+				yield return matrix.EnumerateRow (i);
+			}
+		}
+
 		//ROW/COLUMN SUMMATION
 		public static int SumRow(this int[,] matrix, int row){
 			return matrix.EnumerateRow (row).Sum ();

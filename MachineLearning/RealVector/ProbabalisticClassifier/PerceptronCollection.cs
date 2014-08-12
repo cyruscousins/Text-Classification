@@ -16,7 +16,7 @@ namespace TextCharacteristicLearner
 		double[] weights;
 		double learningRate = 0.1;
 
-		int maxIterations = 100;
+		int maxIterations = 200;
 
 		public Perceptron(int dimension){
 			weights = new double[dimension];
@@ -57,7 +57,7 @@ namespace TextCharacteristicLearner
  
             } while (globalError != 0 && iteration < maxIterations);
 
-			weights.NormalizeSumInPlace ();
+			weights.NormalizeInPlace ();
 
 		}
 
@@ -69,6 +69,12 @@ namespace TextCharacteristicLearner
         {
             return (Output (instance) > 0) ? 1 : -1;
         }
+
+		public override string ToString(){
+			return "{" + "Perceptron: learning rate = " + learningRate + ", max iterations = " + maxIterations + "\n" + 
+				weights.FoldToString () + 
+					"}";
+		}
 
     }
 
@@ -85,16 +91,19 @@ namespace TextCharacteristicLearner
 		public void Train(IEnumerable<LabeledInstance> trainingData){
 			trainingData = trainingData.ToArray(); //TODO performance.
 			classes = trainingData.Select (item => item.label).Distinct ().Order ().ToArray ();
+
 			Dictionary<string, int> classLookup = classes.IndexLookupDictionary();
+
+			int dimension = trainingData.First().values.Length; //TODO 0 case.
 
 			int perceptronCount = (int)Math.Ceiling(Math.Log(classes.Length, 2) * perceptronCountFactor); //Need at least log_2 perceptrons to be able to represent any item with a TRUE combination.  Take twice as many to improve predictive power.
 
 			//TODO Pick classes better.  This technique favors larger classes.  
 			//TODO Don't shuffle every time.  Highly inefficient.
-			perceptrons = Enumerable.Range (0, perceptronCount).AsParallel().Select (
+			perceptrons = Enumerable.Range (0, perceptronCount).Select (
 				val => buildPerceptronForRandomClasses(trainingData.Shuffle().Select (instance => 
 			    	new TupleStruct<double[], int>(instance.values, classLookup[instance.label])), 
-			        classes.Length)
+			        dimension)
 			).ToArray ();
 		}
 
@@ -111,10 +120,12 @@ namespace TextCharacteristicLearner
 			double[] result = new double[classes.Length];
 			foreach(TupleStruct<Perceptron, int[]> perceptron in perceptrons){
 				double score = perceptron.Item1.Output(values);
-				if(score > 0) foreach(int i in perceptron.Item2){
+				if(score > 0) foreach(int i in perceptron.Item2){ //Why only use positives (other than avoiding - %)?  Should this be a mode?
 					result[i] += score;
 				}
 			}
+
+			//TODO: bool useNegatives, bool useScores.
 
 			return result.NormalizeSumInPlace ();
 		}
@@ -125,9 +136,10 @@ namespace TextCharacteristicLearner
 		}
 
 		public override string ToString(){
+			IEnumerable<string> perceptronStrings = perceptrons.Select (tup => tup.Item2.Select (index => classes[index]).FoldToString () + ": " + tup.Item1.ToString ());
 			return "{" + "Perceptron Collection Probabalistic Classifier: " + "perceptron count factor = " + perceptronCountFactor + ":\n" +
-				perceptrons.Length + " perceptrons for " + classes.Length + " classes.\n" + 
-				perceptrons.FoldToString ()
+				perceptrons.Length + " perceptrons for " + classes.Length + " classes:\n" + 
+				perceptronStrings.FoldToString ("{", "}", ",\n")
 				+ "}";
 		}
 	}

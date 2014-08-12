@@ -32,12 +32,97 @@ namespace TextCharacteristicLearner
 		}
 
 		public void Write(string path){
-			File.WriteAllText (path, document.ToString ());
+			Write (path, a => a);
 		}
 		
 		public void Write(string path, Func<String, String> process){
 			File.WriteAllText (path, process(document.ToString ()));
+			//TODO: Invoke latex.
 		}
+	}
+
+	public static class WriteupGenerator{
+		public static void ProduceClassifierComparisonWriteup<Ty>(string documentTitle, string author, double width, double height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds){
+			LatexDocument doc = new LatexDocument(documentTitle, author, .8, width, height);
+
+			doc.Append ("\\section{Input Data Overview}\n\n");
+			doc.Append (dataset.DatabaseLatexString(datasetTitle + " Database Analysis", new[]{criterionByWhichToClassify}, (int)width - 2));
+
+			Console.WriteLine ("Generated Database Overview.");
+
+			foreach(Tuple<string, IEventSeriesProbabalisticClassifier<Ty>> classifier in classifiers){
+				classifier.Item2.Train (dataset);
+
+				doc.Append ("\\section{Feature Synthesizer and Classifier Overview for " + classifier.Item1 + "}\n\n");
+				doc.Append (classifier.Item2.ClassifierLatexString("Author Classifier", (int)((width - 1.6) * 10)));
+
+				//Console.WriteLine ("Generated Classifier Overview.");
+
+
+				doc.Append ("\\section{Classifier Accuracy Report for " + classifier.Item1 + "}\n\n");
+				doc.Append (classifier.Item2.ClassifierAccuracyLatexString(dataset, criterionByWhichToClassify, .8, classificationRounds, .05));
+				
+				//Console.WriteLine ("Generated Classifier Accuracy Report.");
+
+			}
+
+
+			doc.AppendClose ();
+			doc.Write (outFile, s => AsciiOnly(s, false)); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
+			
+		}
+
+		public static void ProduceClassificationReport<Ty>(string documentTitle, string author, double width, double height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteSeriesDatabase<Ty> dataset, string datasetTitle, string criterionByWhichToClassify){
+			
+			LatexDocument doc = new LatexDocument(documentTitle, author, .8, width, height);
+
+			doc.Append ("\\section{Input Data Overview}\n\n");
+			doc.Append (dataset.DatabaseLatexString(datasetTitle + " Database Analysis", new[]{criterionByWhichToClassify}, (int)(width - 2)));
+
+			Console.WriteLine ("Generated Database Overview.");
+
+			classifier.Train (dataset);
+
+			doc.Append ("\\section{Feature Synthesizer and Classifier Overview}\n\n");
+			doc.Append (classifier.ClassifierLatexString("Author Classifier", 160));
+
+			Console.WriteLine ("Generated Classifier Overview.");
+
+			doc.Append ("\\section{Classification Report}\n\n");
+			doc.Append (classifier.ClassificationReportLatexString(dataset, criterionByWhichToClassify));
+			
+			Console.WriteLine ("Generated Classification Report.");
+			
+			//classificationReport.Append ("\\section{Classification Report}\n\n");
+			//classificationReport.Append (synth.ClassificationReportLatexString(data, "author"));
+
+			//accuracyReport.Append("\\section{Classifier Accuracy Report}\n\n");
+			//accuracyReport.Append (synth.ClassifierAccuracyLatexString(data, "author", .8, 8, .05));
+
+
+			doc.Append ("\\section{Classifier Accuracy Report}\n\n");
+			doc.Append ("*\textbf{Section omitted due to abnormally high number of classes.");
+			doc.Append (classifier.ClassifierAccuracyLatexString(dataset, criterionByWhichToClassify, .8, 1, .05));
+			
+			Console.WriteLine ("Generated Classifier Accuracy Report.");
+
+
+			doc.AppendClose ();
+			doc.Write (outFile, s => AsciiOnly(s, false));
+
+		}
+
+
+
+		public static string AsciiOnly(string input, bool includeExtendedAscii)
+		{
+		    int upperLimit = includeExtendedAscii ? 255 : 127;
+		    char[] asciiChars = input.Where(c => (int)c <= upperLimit).ToArray();
+		    return new string(asciiChars);
+		}
+
+
+
 	}
 
 	public static class LatexExtensions
@@ -258,10 +343,14 @@ namespace TextCharacteristicLearner
 			return result.ToString ();
 		}
 
-		public static string ClassifierLatexString<Ty>(this IFeatureSynthesizer<Ty> featureSynth, string classifierName, int textWrap){
+		public static string ClassifierLatexString<Ty>(this IEventSeriesProbabalisticClassifier<Ty> featureSynth, string classifierName, int textWrap){
 			StringBuilder result = new StringBuilder();
 
 			result.Append ("\\subsection{" + classifierName + "}\n");
+			
+			result.AppendLine ("Here relevant information is provided on the classifier used to generate the report.");
+			result.AppendLine ("Generally speaking, the type of the classifier and all parameters are given in the first line, and a complete report of all information learned from training data follows.\\footnote{On a technical note, the reason for the clear difference in representation quality between this section and the remainder of the report is that this section is generated from a string produced by implemetations of the \\texttt{IEventSeriesProbabalisticClassifier<string>} interface, whereas the remaining sections involving the classifier use only the public contract to obtain their data.}");
+
 
 			string fsynthstr = WordWrap(featureSynth.ToString (), textWrap);
 
@@ -328,10 +417,10 @@ namespace TextCharacteristicLearner
 		*/
 		
 		//Name, true class, predicted class, scores, winning score;
-		public static Tuple<string, string, string, double[], double> classificationInfo<Ty>(IFeatureSynthesizer<Ty> featureSynth, string[] classifierSchema, Dictionary<string, int> trueSchemaMapping, DiscreteEventSeries<Ty> data, string nameCriterion, string criterionByWhichToClassify){
+		public static Tuple<string, string, string, double[], double> classificationInfo<Ty>(IEventSeriesProbabalisticClassifier<Ty> featureSynth, string[] classifierSchema, Dictionary<string, int> trueSchemaMapping, DiscreteEventSeries<Ty> data, string nameCriterion, string criterionByWhichToClassify){
 
 			//scores in the synthesizer scorespace
-			double[] synthScores = featureSynth.SynthesizeFeaturesSumToOne (data);
+			double[] synthScores = featureSynth.Classify (data);
 
 			int maxIndex = synthScores.MaxIndex();
 			string predictedClass = classifierSchema[maxIndex];
@@ -346,7 +435,7 @@ namespace TextCharacteristicLearner
 			return new Tuple<string, string, string, double[], double> (data.labels[nameCriterion], data.labels[criterionByWhichToClassify], predictedClass, trueScores, maxScore);
 		}
 
-		public static string ClassifierAccuracyLatexString<Ty> (this IFeatureSynthesizer<Ty> featureSynth, DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
+		public static string ClassifierAccuracyLatexString<Ty> (this IEventSeriesProbabalisticClassifier<Ty> featureSynth, DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
 		{
 
 			string nameCriterion = "filename"; //TODO: Input parameter or constant for this.
@@ -379,7 +468,7 @@ namespace TextCharacteristicLearner
 
 				featureSynth.Train (training);
 
-				string[] classifierSchema = featureSynth.GetFeatureSchema ();
+				string[] classifierSchema = featureSynth.GetClasses ();
 
 				classificationInstances.AddRange (test.data.AsParallel ().Select (item => classificationInfo (featureSynth, classifierSchema, schemaMapping, item, nameCriterion, criterionByWhichToClassify)));
 				
@@ -388,7 +477,7 @@ namespace TextCharacteristicLearner
 
 
 			//Confusion Matrices.
-			int[,] confusionMatrixCounts = new int[classCount, classCount];
+			int[,] confusionMatrixCounts = new int[classCount, classCount]; // [a,b] : How often a is classified as b 
 			double[,] confusionMatrixScores = new double[classCount, classCount];
 
 			//Confusion matrix allocation
@@ -476,6 +565,7 @@ namespace TextCharacteristicLearner
 			result.AppendLine (@"\subsection{Classifier Accuracy Estimation Report}");
 			result.AppendLine ("From a set of " + labeledData.data.Count + " labeled instances, classifiers were build with a training data to test data ratio of " + trainSplitFrac.ToString(formatString) + " (" + ((int) (trainSplitFrac * labeledData.data.Count())) + " training, " + (labeledData.data.Count - ((int) (trainSplitFrac * labeledData.data.Count()))) + " test instances).");
 			result.AppendLine ("The process was repeated " + iterations + " times, for a total of " + classificationInstances.Count + " classifications.");
+			result.AppendLine ("In these trials, the overall accuracy rate was found to be " + overallAccuracy + ".");
 			result.AppendLine ("The raw results appear here below\\footnote{It may be that an instance appears multiple times in the table below; this is expected behavior, as the training and test datasets are repeatedly randomly selected.  This behavior is not undesirable, as, assuming the highly probable case where the repeated item is repeated classified by a classifier trained on different data in both each instance, each classification instance represents a novel point and is still valuable.}.\n");
 
 
@@ -507,7 +597,7 @@ namespace TextCharacteristicLearner
 					"l|l|".Cons(Enumerable.Range(0, topnClasses).Select(i => "c")),
 					"Instance Name;True Class".Split (';').Concat(Enumerable.Range(0, topnClasses).Select(i => ordinal ((i + 1), true))),
 					classificationInstances.OrderByDescending(tuple => tuple.Item5). /* Take (topnItems). */ Select (
-					item => new[]{limitLength (item.Item1, 25), limitLength (item.Item2, 25)}.Concat (item.Item4.Select ((score, index) => new Tuple<double, string, string>(score, datasetSchema[index], datasetSchemaText[index])).OrderByDescending (tup => tup.Item1).Take (topnClasses).Select ((final, index) => ((final.Item2 == item.Item2) ? final.Item3 : @"\textcolor[rgb]{" + (.9 * 2 / (2 + index)) + "," + (.1 * 2 / (2 + index)) + "," + (.1 * 2 / (2 + index)) + "}{ " + final.Item3 + "}") + @":" + colorPercent (final.Item1)))
+					item => new[]{limitLength (item.Item1, 25), limitLength (item.Item2, 25)}.Concat (item.Item4.Select ((score, index) => new Tuple<double, string, string>(score, datasetSchema[index], datasetSchemaText[index])).OrderByDescending (tup => tup.Item1).Take (topnClasses).Select ((final, index) => ((final.Item2 == item.Item2) ? final.Item3 : @"\textcolor[rgb]{" + (.9 * 3 / (3 + index)) + "," + (.1 * 3 / (3 + index)) + "," + (.1 * 3 / (3 + index)) + "}{ " + final.Item3 + "}") + @":" + colorPercent (final.Item1)))
 					)
 				));
 				if (classificationInstances.Count > topnItems){
@@ -771,17 +861,166 @@ namespace TextCharacteristicLearner
 									.FoldToString("\t\\item ", "", "\t\\item "));
 			result.AppendLine (@"\end{itemize}");
 
-			//TODO: % with + or -
+			result.AppendLine(@"\par\bigskip");
+
+
+			result.AppendLine (@"\textbf{Possible Class Equivalence}");
+			result.AppendLine ("With poor data quality, instances are often mislabeled.  In this section, possible mislabeling events are noted.");
+			result.AppendLine ("Results are based on misclassification frequencies, lexicographic distances, relative abundances, and total class count.");
+
+			result.AppendLine (@"\par\bigskip");
+
+			//Calculate error rate between strings using Levenshtein distance 
+			double[,] levErrorRates = LevenshteinDistance.ErrorRateMatrix(datasetSchema);
+			int[] instanceCounts = new int[classCount];
+
+			//Figure out how many instances are in each class.
+			IEnumerable<string> classNames = labeledData.Select (item => item.labels[criterionByWhichToClassify]);
+			foreach(string s in classNames){
+				instanceCounts[schemaMapping[s]]++;
+			}
+
+
+			result.AppendLine ();
+
+			result.AppendLine ("Case 1: A small class is frequently mistaken for a large class.");
+
+			//TODO: Program this right.  None of this "for loop" business.
+
+			//Name1, Name2, LevError, Instances1, Instances2, Confusion 1->2, Confusion 2->1
+			List<Tuple<string, string, double, int, int, double, double>> type1Mistakes = new List<Tuple<string, string, double, int, int, double, double>>();
+			for(int i = 0; i < classCount; i++){
+				for(int j = 0; j < classCount; j++){
+					if(i == j) continue;
+					double ijConfusion = confusionMatrixCounts[i,j] / (double)instanceCounts[i];
+					double jiConfusion = confusionMatrixCounts[j,i] / (double)instanceCounts[j];
+					if(levErrorRates[i,j] < .25 && instanceCounts[i] < instanceCounts[j] / 2 && ijConfusion > .0125){
+						type1Mistakes.Add (new Tuple<string, string, double, int, int, double, double>
+		                    (
+								datasetSchema[i], datasetSchema[j], levErrorRates[i,j], instanceCounts[i], instanceCounts[j], ijConfusion, jiConfusion
+							)
+						);
+					}
+				}
+			}
+
+			result.AppendLine (latexLongTableString(
+				"l;l;c;c;c;c;c".Split (';'),
+				"Class A;Class B;Name Distance;Class A Size;Class B Size;A $\\rightarrow$ B rate;B $\\rightarrow$ A rate".Split (';'),
+				type1Mistakes.Select (item =>
+			     	new[]{
+						item.Item1, 
+						item.Item2, 
+						"\\mathbf{" + item.Item3 +"}", 
+						item.Item4.ToString(), 
+						item.Item5.ToString(), 
+						colorDouble(item.Item6), 
+						colorDouble (item.Item7)
+					}
+			)));
+
+
+			result.AppendLine ();
+			result.AppendLine ("Case 2: Two similarly sized classes are frequently confused.");
+
+			List<Tuple<string, string, double, int, int, double, double>> type2Mistakes = new List<Tuple<string, string, double, int, int, double, double>>();
+			for(int i = 0; i < classCount; i++){
+				for(int j = i + 1; j < classCount; j++){
+					
+					double ijConfusion = confusionMatrixCounts[i,j] / (double)instanceCounts[i];
+					double jiConfusion = confusionMatrixCounts[j,i] / (double)instanceCounts[j];
+					if(levErrorRates[i,j] < .25 && instanceCounts[i] < instanceCounts[j] * 8 && instanceCounts[j] < instanceCounts[i] * 8 && ijConfusion > .015 && jiConfusion > .015 && Math.Abs (ijConfusion - jiConfusion) < .925){
+						type1Mistakes.Add (new Tuple<string, string, double, int, int, double, double>
+		                    (
+								datasetSchema[i], datasetSchema[j], levErrorRates[i,j], instanceCounts[i], instanceCounts[j], ijConfusion, jiConfusion
+							)
+						);
+					}
+				}
+			}
+
+			result.AppendLine (latexLongTableString(
+				"l;l;c;c;c;c;c".Split (';'),
+				"Class A;Class B;Name Distance;Class A Size;Class B Size;A $\\rightarrow$ B rate;B $\\rightarrow$ A rate".Split (';'),
+				type2Mistakes.Select (item =>
+			     	new[]{
+						item.Item1, 
+						item.Item2, 
+						"\\mathbf{" + item.Item3 +"}", 
+						item.Item4.ToString(), 
+						item.Item5.ToString(), 
+						colorDouble(item.Item6), 
+						colorDouble (item.Item7)
+					}
+			)));
+
+			//result.AppendLine ("Found " + type1Mistakes.Count + "type 1 mistakes and " + type2Mistakes.Count + " type 2 mistakes.");
+
+			//TODO: Only take top n from either group.
+
+			//TODO: Parametrize techniques.
+
+			//TODO: Generalize techniques.
 
 			return result.ToString ();
 		}
 
 		
-		public static string ClassificationReportLatexString<Ty> (this IFeatureSynthesizer<Ty> featureSynth, DiscreteSeriesDatabase<Ty> dataToClassify, string criterionByWhichToClassify)
+		public static string FeatureSynthesizerLatexString<Ty> (this IFeatureSynthesizer<Ty> featureSynth, DiscreteSeriesDatabase<Ty> data)
+		{
+			//TODO: This
+
+			//Show what features are generated for some documents.
+
+			string[] schema = featureSynth.GetFeatureSchema();
+
+			IEnumerable<double[]> generations = data.Select (item => featureSynth.SynthesizeFeatures(item));
+
+			StringBuilder result = new StringBuilder();
+			
+			result.AppendLine (@"\subsection{Feature Synthesizer output}");
+
+
+			if(schema.Length < 50){
+
+			}
+			else{
+
+			}
+
+			result.AppendLine ("Feature Generation Schema:\n");
+			//result.AppendLine (@"\begin{verbatim}");
+			result.AppendLine (schema.Select (item => item.RegexReplace ("([{}])", @"\$1")).FoldToString (@"\{", @"\}", ", ") + "\n");
+			//result.AppendLine (@"\end{verbatim}");
+			result.AppendLine("Synthesized Features:\n");
+
+			//result.AppendLine (@"\begin{verbatim}");
+			result.AppendLine (generations.Zip (data, (item, info) => info.labels["filename"] + ":" + info.labels["region"] + item.Select(val => val.ToString (formatString)).FoldToString()).FoldToString ("", "", "\n\n"));
+			//result.AppendLine (@"\end{verbatim}");
+
+			//TODO: Statistics on these values.
+
+
+
+
+
+
+
+
+
+
+
+
+			return result.ToString ();
+
+
+		}
+		
+		public static string ClassificationReportLatexString<Ty> (this IEventSeriesProbabalisticClassifier<Ty> featureSynth, DiscreteSeriesDatabase<Ty> dataToClassify, string criterionByWhichToClassify)
 		{
 			dataToClassify = dataToClassify.Filter (item => !item.labels.ContainsKey (criterionByWhichToClassify));
 
-			string[] schema = featureSynth.GetFeatureSchema();
+			string[] schema = featureSynth.GetClasses();
 			string[] schemaText = schema.Select (item => @"\text{" + limitLength (item, 20) + "}").ToArray ();
 			string[] schemaTextRotated = schemaText.Select (item => @"\begin{turn}{70}" + item + @"\end{turn}").ToArray ();
 
@@ -791,7 +1030,7 @@ namespace TextCharacteristicLearner
 			//TODO: AsParallel?
 			IEnumerable<Tuple<string, string, double, double[]>> classifications = dataToClassify.data. /* AsParallel(). */ Select (item => 
 				{
-					double[] vals = featureSynth.SynthesizeFeaturesSumToOne(item);
+					double[] vals = featureSynth.Classify(item);
 					int maxIndex = vals.MaxIndex();
 					return new Tuple<string, string, double, double[]>(item.labels["filename"], schema[maxIndex], vals[maxIndex], vals);
 				});

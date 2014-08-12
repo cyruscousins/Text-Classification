@@ -54,6 +54,13 @@ namespace TextCharacteristicLearner
 		public double[] SynthesizeFeatures(DiscreteEventSeries<Ty> item){
 			return synths.SelectMany (synth => synth.SynthesizeFeatures(item)).ToArray();
 		}
+		
+		public override string ToString(){
+			return "{Compound Feature Synthesizer: [Training data configuration not yet available] on " + ClassificationCriterion + "\n" +
+				synths.Length + " synthesizers.\n" + 
+				synths.FoldToString ("{", "}", ",\n") + "\n" +
+				"}";
+		}
 	}
 }
 
