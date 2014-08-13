@@ -78,6 +78,12 @@ namespace TextCharacteristicLearner
 
     }
 
+	public enum PerceptronTrainingModes{
+		TRAIN_ALL_DATA = 0,
+		TRAIN_EVEN_SIZE = 1,
+		TRAIN_EVEN_WEIGHTS = 2
+	}
+
 	public class PerceptronCollection : IProbabalisticClassifier
 	{
 		TupleStruct<Perceptron, int[]>[] perceptrons; //The perceptron and the classes it pertains to.

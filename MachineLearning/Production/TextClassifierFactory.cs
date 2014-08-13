@@ -107,6 +107,21 @@ namespace TextCharacteristicLearner
 					),
 					new PerceptronCollection(8.0)
 				);
+
+			IEventSeriesProbabalisticClassifier<string> perceptronBasedClassifierDoublePower = 
+				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
+					new CompoundFeatureSynthesizer<string>(
+						"region",
+						
+						new IFeatureSynthesizer<string>[]{
+							new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
+							new LatinLanguageFeatureSynthesizer("region"),
+					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
+					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
+						}
+					),
+					new PerceptronCollection(16.0)
+				);
 			
 			IEventSeriesProbabalisticClassifier<string> evenKnnBasedClassifier = 
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
@@ -170,17 +185,18 @@ namespace TextCharacteristicLearner
 							//new ZScoreNormalizer(new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES)),
 							//new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA)),
 							new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES),
-							new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA),
+							new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE, KnnTrainingMode.TRAIN_ALL_DATA),
 							new PerceptronCollection(8.0)
 						}
 					)
 				);
 
-			return "Region feature synthesizer based classifier;Double power region feature based classifier;Perceptron based classifier;Even Distribution KNN based classifier;All data KNN based classifier;Normalized KNN based classifier;Ensemble based classifier".Split (';').Zip (
+			return "region feature synthesizer based classifier;double power region feature based classifier;perceptron based classifier;double power perceptron based classifier;even distribution KNN based classifier;all data KNN based classifier;normalized KNN based classifier;ensemble based classifier".Split (';').Zip (
 				new[]{
 					synthesizerClassifier, 
 					doublePowerSynthesizerClassifier, 
 					perceptronBasedClassifier, 
+					perceptronBasedClassifierDoublePower, 
 					evenKnnBasedClassifier, 
 					allKnnBasedClassifier, 
 					normalizedKnnBasedClassifier, 
