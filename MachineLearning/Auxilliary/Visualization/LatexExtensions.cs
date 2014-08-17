@@ -40,54 +40,139 @@ namespace TextCharacteristicLearner
 			//TODO: Invoke latex.
 		}
 	}
+	
 
-	public static class WriteupGenerator{
-		public static void ProduceClassifierComparisonWriteup<Ty> (string documentTitle, string author, double width, double height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds)
+	public static class WriteupGenerator{	
+		public static Random rand = new Random();
+		public static string applyRandomLatexColor(string s){
+			return getRandomColorer()(s);
+		}
+		public static Func<string, string> getRandomColorer(double max = .8){
+			string colorStr = Enumerable.Range (0, 3).Select (item => (rand.NextDouble () * max).ToString ("F3")).FoldToString ("", "", ",");
+			return s => @"\textcolor[rgb]{" + colorStr + "}{" + s + "}";
+		}
+
+		public static void ProduceClassifierComparisonWriteup<Ty> (string documentTitle, string author, double width, double height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds, string[] analysisCriteria = null, IFeatureSynthesizer<Ty> synthesizer = null)
 		{
+			dataset = dataset.FilterForCriterion (criterionByWhichToClassify);
+
 			LatexDocument doc = new LatexDocument (documentTitle, author, .8, width, height);
 
 			doc.Append ("\\section{Input Data Overview}\n\n");
-			doc.Append (dataset.DatabaseLatexString (datasetTitle + " Database Analysis", new[]{criterionByWhichToClassify}, (int)width - 2));
+			doc.Append (dataset.DatabaseLatexString (datasetTitle + " Database Analysis", (analysisCriteria == null) ? new[]{criterionByWhichToClassify} : analysisCriteria, (int)width - 2));
 
 			//Train all the classifiers
 			foreach (Tuple<string, IEventSeriesProbabalisticClassifier<Ty>> classifier in classifiers) {
 				classifier.Item2.Train (dataset);
 			}
 
-			Tuple<string, ClassifierAccuracyAnalysis<Ty>>[] analyses = classifiers.AsParallel ().AsOrdered ().Select (classifier => new Tuple<string,ClassifierAccuracyAnalysis<Ty>>(classifier.Item1, new ClassifierAccuracyAnalysis<Ty>(classifier.Item2, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis())).ToArray();
+			//Accuracy analysis:
+			Tuple<string, ClassifierAccuracyAnalysis<Ty>>[] analyses = classifiers.AsParallel ().Select (classifier => new Tuple<string,ClassifierAccuracyAnalysis<Ty>> (classifier.Item1, new ClassifierAccuracyAnalysis<Ty> (classifier.Item2, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ())).OrderBy (tup => tup.Item2.overallAccuracy).ToArray ();
+
+			//Shared confusion matrix calculation:
+			int classifierCount = classifiers.Count ();
+			int classCount = analyses.First ().Item2.datasetSchema.Length;
+
+			double[,] sharedConfusionMatrix = new double[classifierCount, classifierCount];
+			for (int i = 0; i < classifierCount; i++) {
+				sharedConfusionMatrix [i, i] = Double.NaN;
+				for (int j = i + 1; j < classifierCount; j++) {
+
+					double sharedConfusion = 0;
+					//Sum the shared confusion of confusion matrices i and j
+
+
+					for (int ii = 0; ii < classCount; ii++) {
+						for (int jj = 0; jj < classCount; jj++) {
+							if (ii == jj)
+								continue;
+							double val = analyses [i].Item2.confusionMatrixScores [ii, jj] * analyses [j].Item2.confusionMatrixScores [ii, jj];
+							if (val > 0)
+								sharedConfusion += val.Sqrt ();
+						}
+					}
+					sharedConfusionMatrix [i, j] = sharedConfusionMatrix [j, i] = sharedConfusion;
+				}
+			}
+
+			//Generate colors for classifiers
+			Func<string, string>[] classifierColorers = Enumerable.Range (0, classifierCount).Select ((a) => getRandomColorer (.8)).ToArray ();
+
 
 			Console.WriteLine ("Generated Database Overview.");
 
-			doc.Append (@"\section{Classifier Comparison Overview}");
+			if (synthesizer != null) {
+				doc.Append (@"\section{Feature Analysis}");
+				doc.Append (LatexExtensions.FeatureAnalysisLatexString (synthesizer, dataset, criterionByWhichToClassify));
+			}
+
+			doc.Append (@"\section{Classifier Comparison}");
+
+			
+			doc.Append (@"\subsection{Classifier Comparison Overview}");
 
 			//Overview
+			doc.Append ("Over a set of " + analyses[0].Item2.labeledData.data.Count + " labeled instances, " + analyses.Length + " classifiers were compared.  In this experiment, a training data to test data ratio of " + analyses[0].Item2.trainSplitFrac.ToString(LatexExtensions.formatString) + " (" + ((int) (analyses[0].Item2.trainSplitFrac * analyses[0].Item2.labeledData.data.Count())) + " training, " + (analyses[0].Item2.labeledData.data.Count - ((int) (analyses[0].Item2.trainSplitFrac * analyses[0].Item2.labeledData.data.Count()))) + " test instances) was used.");
+			doc.Append ("The process was repeated " + analyses[0].Item2.iterations + " times, for a total of " + analyses[0].Item2.classificationInstances.Count + " classifications for each classifier.");
+
 			doc.Append (analyses.Length.ToString () + " classifiers were compared.  An overview of the results is presented here.\n");
 
 			doc.Append (LatexExtensions.latexLongTableString(
 				"l|;c;c".Split (';'),
 				"Classifier Name;Classifier Rank;Overall Accuracy".Split(';'),
 				new[]{
-					new Tuple<string, double>( @"E$[$Random Selection$]$", analyses[0].Item2.expectedAccuracyRandom),
-					new Tuple<string, double>( "Top Class Selection", analyses[0].Item2.topClassSelectionAccuracy)
-			}.Concat (analyses.Select (analysis => new Tuple<string, double>(@"\hyperref[sec:classification " + analysis.Item1 + "]{" + analysis.Item1 + "}" , analysis.Item2.overallAccuracy))).OrderByDescending (tup => tup.Item2).Select ((tup, index) => new[]{tup.Item1, (index + 1).ToString (), LatexExtensions.colorPercent(tup.Item2)})
+					new Tuple<string, double>( @"\textcolor[gray]{0.2}{E$[$Random Selection$]$}", analyses[0].Item2.expectedAccuracyRandom),
+					new Tuple<string, double>( @"\textcolor[gray]{0.2}{Top Class Selection}", analyses[0].Item2.topClassSelectionAccuracy)
+			}.Concat (analyses.Zip (classifierColorers, (analysis, colorer) => new Tuple<string, double>(@"\hyperref[sec:classification " + analysis.Item1 + "]{" + colorer(analysis.Item1) + "}" , analysis.Item2.overallAccuracy))).Select ((tup, index) => new[]{tup.Item1, (index + 1).ToString (), LatexExtensions.colorPercent(tup.Item2)})
 			));
 
 
-			//TODO: No rank for small lists?
+			doc.Append (@"\pagebreak[3]");
+			//doc.Append (@"\begin{samepage}"); //samepage and multicols don't play nicely.
+
+			doc.Append (@"\subsection{Classifier Comparison Shared Confusion Matrix}");
+			
+			doc.Append (@"For classes $A, B,$ with score confusion matrices $\mathbf{A}, \mathbf{B}$, shared confusion is defined as $$\sum_{i = 1}^{|\text{classes}|}\sum_{j \in [1, \text{classes}] / \{i\}} \sqrt{\min(0, \textbf{A}_{ij} * \textbf{B}_{ij})}$$");
+			doc.Append ("");
 
 
+			//Colorer key:
+
+			doc.Append ("Classifier color key:");
+			doc.Append (@"\begin{multicols}{2}"); //TODO: Calculate number of columns?
+			doc.Append (@"\begin{itemize}");
+			doc.Append (classifiers.Zip (classifierColorers, (classifier, colorer) => @"  \item " + colorer(classifier.Item1)).FoldToString ("", "", "\n"));
+			doc.Append (@"\end{itemize}");
+			doc.Append (@"\end{multicols}");
+
+
+			/*
+			doc.Append (LatexExtensions.latexLabeledMatrixString(
+				"bmatrix", 
+				classifiers.Select (classifier => @"\text{" +classifier.Item1 + "}").ToArray (), 
+				sharedConfusionMatrix.EnumerateRows ().Select (row => row.Select (cell => LatexExtensions.colorDouble(cell)))));
+			*/
+
+			double matrixMax = sharedConfusionMatrix.EnumerateRows ().Flatten1().Where (item => !Double.IsNaN(item)).Max(); //TODO: cleaner expression.  Enumerate the matrix in one go?
+
+			doc.Append (LatexExtensions.latexTabularLabeledMatrixString(
+				classifiers.Zip (classifierColorers, (classifier, colorer) => colorer(LatexExtensions.limitLength(classifier.Item1, 20))).ToArray (), 
+				sharedConfusionMatrix.EnumerateRows ().Select (row => row.Select (cell => LatexExtensions.colorDouble(cell, matrixMax))), 90));
+
+			//doc.Append (@"\end{samepage}");
+
+			//Create a section for each classifier.
 
 			foreach(Tuple<string, ClassifierAccuracyAnalysis<Ty>> classifierAnalysis in analyses){
 
-				doc.Append ("\\section{Feature Synthesizer and Classifier Overview for " + classifierAnalysis.Item1 + "}\n\n");
-				doc.Append (@"\label{sec:classification " + classifierAnalysis.Item1 + "}");
-				doc.Append (classifierAnalysis.Item2.classifier.ClassifierLatexString("Author Classifier", (int)((width - 1.6) * 10)));
+				doc.Append (@"\section{Feature Synthesizer and Classifier Overview for " + classifierAnalysis.Item1 + "}\n\n");
+				doc.Append (@"\label{sec:classifier " + classifierAnalysis.Item1 + "}");
+				doc.Append (classifierAnalysis.Item2.classifier.ClassifierLatexString("Author Classifier", (int)((width - 1.6) * 13)));
 
 				//Console.WriteLine ("Generated Classifier Overview.");
 
-
-				doc.Append ("\\section{Full Classifier Accuracy Report for " + classifierAnalysis.Item1 + "}\n\n");
-				doc.Append (@"\label{sec:classifier " + classifierAnalysis.Item1 + "}");
+				doc.Append (@"\section{Full Classifier Accuracy Report for " + classifierAnalysis.Item1 + "}\n\n");
+				doc.Append (@"\label{sec:classification " + classifierAnalysis.Item1 + "}");
 				doc.Append (classifierAnalysis.Item2.latexAccuracyAnalysisString());
 				
 				//Console.WriteLine ("Generated Classifier Accuracy Report.");
@@ -96,7 +181,7 @@ namespace TextCharacteristicLearner
 
 
 			doc.AppendClose ();
-			doc.Write (outFile, s => AsciiOnly(s, false)); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
+			doc.Write (outFile, s => AsciiOnly(s, true)); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
 			
 		}
 
@@ -112,31 +197,22 @@ namespace TextCharacteristicLearner
 			classifier.Train (dataset);
 
 			doc.Append ("\\section{Feature Synthesizer and Classifier Overview}\n\n");
-			doc.Append (classifier.ClassifierLatexString("Author Classifier", 160));
+			doc.Append (classifier.ClassifierLatexString("Author Classifier", (int)((width - 1.6) * 13)));
 
 			Console.WriteLine ("Generated Classifier Overview.");
 
 			doc.Append ("\\section{Classification Report}\n\n");
-			doc.Append (classifier.ClassificationReportLatexString(dataset, criterionByWhichToClassify));
+			doc.Append (classifier.ClassificationReportLatexString(dataset, criterionByWhichToClassify, 0));
 			
 			Console.WriteLine ("Generated Classification Report.");
-			
-			//classificationReport.Append ("\\section{Classification Report}\n\n");
-			//classificationReport.Append (synth.ClassificationReportLatexString(data, "author"));
-
-			//accuracyReport.Append("\\section{Classifier Accuracy Report}\n\n");
-			//accuracyReport.Append (synth.ClassifierAccuracyLatexString(data, "author", .8, 8, .05));
-
 
 			doc.Append ("\\section{Classifier Accuracy Report}\n\n");
-			doc.Append ("*\textbf{Section omitted due to abnormally high number of classes.");
-			doc.Append (classifier.ClassifierAccuracyLatexString(dataset, criterionByWhichToClassify, .8, 1, .05));
+			doc.Append (classifier.ClassifierAccuracyLatexString(dataset, criterionByWhichToClassify, .8, 8, .05));
 			
 			Console.WriteLine ("Generated Classifier Accuracy Report.");
 
-
 			doc.AppendClose ();
-			doc.Write (outFile, s => AsciiOnly(s, false));
+			doc.Write (outFile, s => AsciiOnly(s, true));
 
 		}
 
@@ -188,17 +264,24 @@ namespace TextCharacteristicLearner
 
 \usepackage{longtable}
 
+\usepackage{multicol}
+
 " + "\\usepackage[margin=" + margin + "in, paperwidth=" + width + "in, paperheight=" + height + "in]{geometry}\n"
 
  + "\\title{" + title + "}\n\\author{" + author + "}\n\n" +
-@"\begin{document}
+
+@"
+\setcounter{MaxMatrixCols}{200}
+" + 
+
+@"
+\begin{document}
 
 \maketitle
 \tableofcontents
 \listoffigures
 \pagebreak[4]
 
-\setcounter{MaxMatrixCols}{200}
 
 ";
 		}
@@ -216,56 +299,68 @@ namespace TextCharacteristicLearner
 
 			StringBuilder result = new StringBuilder ();
 
-			result.AppendLine ("The database contains " + englishCountOfString(objName, db.TotalItemCount ()) + " words across " + englishCountOfString("document", db.data.Count) + ".");
-			result.AppendLine ("Documents are labeled along " + englishCountOfString("criterion", criteriaCount) + ".");
+			result.AppendLine ("The database contains " + englishCountOfString (objName, db.TotalItemCount ()) + " words across " + englishCountOfString ("document", db.data.Count) + ".");
+			result.AppendLine ("Documents are labeled along " + englishCountOfString ("criterion", criteriaCount) + ".");
 
 			result.AppendLine (
 				criterionInformation.Select (
 					info => "Classification criterion " + @"\texttt{" + info.Item1 + "}" + " contains " + info.Item2.Length + " categories.  "
-				+ ((info.Item2.Length <= 20) ? ((info.Item2.Length == 1 ? "It is" : "They are") + " " + foldToEnglishList (info.Item2.Select (item => @"\texttt{" + item + "}")) + ".") : "")
+				+ ((info.Item2.Length <= 20) ? ((info.Item2.Length == 1 ? "It is" : "They are") + " " + foldToEnglishList (info.Item2.Select (item => @"\texttt{" + item + "}")) + ".  ") : "")
 			).FoldToString ("", "", "")
 			);
 
-			result.AppendLine ("\\subsection{" + dbName + " overview}\n");
+			result.AppendLine ("\\subsection{" + dbName + " instance overview}\n");
 
-			if (db.data.Count > 10000) {
-				result.AppendLine (@"\textbf{Omitted because over 10000 entries exist.}");
-			}
-			else{
-				List<DiscreteEventSeries<Ty>> items = db.data.OrderBy (a => a.labels ["filename"]).ToList (); //Sort.
-				result.AppendLine ("\\subsubsection{All Dataset Entries}\n");
+			DiscreteEventSeries<Ty>[] dbInstances = db.data.OrderBy (a => a.labels ["filename"]).ToArray (); //Sort instances.
 
-				result.AppendLine ("Here all entries in the dataset are presented, along with the first " + englishCountOfString(objName, firstN) + " of the entry and their classes by all available criteria.");
+			int maxToEnumerate = 10000;
+			if (db.data.Count > maxToEnumerate) {
+				result.AppendLine (@"\textbf{Database instance overview omitted because over " + maxToEnumerate + " entries exist.}\n");
+			} else {
+				//result.AppendLine ("\\subsubsection{All Dataset Entries}\n");
 
+				result.AppendLine ("Here all entries in the dataset are presented, along with the first " + englishCountOfString (objName, firstN) + " of the entry and their classes by all available criteria.");
+
+				int cols = 1; //TODO: Calculate this based on string lengths and page width
+				if (cols > 1) result.AppendLine (@"\begin{multicols}{" + cols + "}");
 				result.AppendLine ("\\begin{enumerate}[1.]");
 				result.AppendLine ("\\itemsep0pt");
 
-				foreach (DiscreteEventSeries<Ty> item in items) {
-					result.AppendLine ("\\item " + item.labels ["filename"] + " (" + englishCountOfString(objName, item.data.Length) + ")" 
+				foreach (DiscreteEventSeries<Ty> item in dbInstances) {
+					result.AppendLine ("\\item " + item.labels ["filename"] + " (" + englishCountOfString (objName, item.data.Length) + ")" 
 						+ " $\\in$ " + foldToEnglishList (item.labels.Keys.Where (key => key != "filename").Select (key => key + ":" + item.labels [key])) + ".  ``"
 						+ seriesToSafeString (item, firstN) + "''."
 					);
 				}
 				result.Append ("\\end{enumerate}\n");
+				if (cols > 1)
+					result.AppendLine (@"\end{multicols}");
+			}
+			
+			result.AppendLine ("\\subsection{" + dbName + " class overview}\n");
 
-				if(db.data.Count > 2500){
-					result.AppendLine (@"\textbf{Omitted because over 2500 entries exist.}");
-				}
-				else{
-					result.Append ("\\subsubsection{" + dbName + " categories}\n");
-					result.Append ("\\begin{enumerate}[1.]\n");
+			maxToEnumerate = 20000;
+			if (db.data.Count > maxToEnumerate) {
+				result.AppendLine (@"\textbf{Class overview omitted because over " + db.data.Count + " instances exist.}\n");
+			}
+			else{
+				//result.Append ("\\subsubsection{" + dbName + " categories}\n");
+				
+				int cols = 2; //TODO: Calculate this based on string lengths and page width
+				if (cols > 1) result.AppendLine (@"\begin{multicols}{" + cols + "}");
+				result.Append ("\\begin{enumerate}[1.]\n");
 
-					foreach(string key in criteriaToEnumerate.OrderBy (item => item)){
-						result.AppendLine ("\\item " + key + "(" + items.Where (item => item.labels.ContainsKey (key)).Count() + " labeled entries):");
-						result.Append ("\\begin{enumerate}[I.]\n");
-						result.Append (items.GroupBy (item => item.labels.GetWithDefault(key, "\\texttt{none}")) //Group by category
-						    .OrderBy (item => item.Key == "\\texttt{none}" ? 1 : 0).ThenBy (item => item.Key) //Order by name, with none last
-							.FoldToString (item => item.Key + " (" + item.Count() + " entries, " + englishCountOfString(objName, item.Select (subitem => subitem.data.Length).Sum()) + ")\n" //Count words per category;
-						   		+ item.FoldToString (subitem => subitem.labels["filename"] + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
-						result.Append ("\\end{enumerate}\n");
-					}
-					result.AppendLine ("\\end{enumerate}\n");
+				foreach(string key in criteriaToEnumerate.OrderBy (item => item)){
+					result.AppendLine (@"\item " + key + "(" + dbInstances.Where (item => item.labels.ContainsKey (key)).Count() + " labeled entries):");
+					result.AppendLine (@"\begin{enumerate}[I.]");
+					result.AppendLine (dbInstances.GroupBy (item => item.labels.GetWithDefault(key, "\\texttt{none}")) //Group by category
+					    .OrderBy (item => item.Key == "\\texttt{none}" ? 1 : 0).ThenBy (item => item.Key) //Order by name, with none last
+						.FoldToString (item => item.Key + " (" + item.Count() + " entries, " + englishCountOfString(objName, item.Select (subitem => subitem.data.Length).Sum()) + ")\n" //Count words per category;
+					   		+ item.FoldToString (subitem => subitem.labels["filename"] + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
+					result.AppendLine (@"\end{enumerate}");
 				}
+				result.AppendLine (@"\end{enumerate}");
+				if (cols > 1) result.AppendLine (@"\end{multicols}");
 			}
 
 
@@ -275,8 +370,7 @@ namespace TextCharacteristicLearner
 			Tuple<string, Tuple<string, DiscreteEventSeries<Ty>[]>[]>[] dataByCriterionAndClass = criteriaToEnumerate.Select (criterion =>
 				new Tuple<string, Tuple<string, DiscreteEventSeries<Ty>[]>[]>(
 					criterion, db.data.Where (item => item.labels.ContainsKey(criterion)).GroupBy (item => item.labels[criterion])
-.Select (grp => 
-			         new Tuple<string, DiscreteEventSeries<Ty>[]>(grp.Key, grp.ToArray ()))
+					.Select (grp => new Tuple<string, DiscreteEventSeries<Ty>[]>(grp.Key, grp.ToArray ()))
 				.OrderBy (tup => tup.Item1)
 				.ToArray ()
 
@@ -288,14 +382,14 @@ namespace TextCharacteristicLearner
 			result.AppendLine (@"\subsubsection{Aggregate Statistics over all Criteria}");
 			result.AppendLine (latexLongTableString (
 				"l |".Cons (Enumerable.Range (0, 6).Select (i => "c")), //Format
-				"Criterion Name;Class Count;Min Class Size;Max Class Size;Mean Class Size;Stdev Class Size".Split (';'), //Header
+				@"Criterion Name;Class Count;Min Class Size\tablefootnote{All class sizes refer to instance counts, not sum event counts.  See the following subsection for detailed reports on event counts by class.};Max Class Size;Mean Class Size;Stdev Class Size".Split (';'), //Header
 			    dataByCriterionAndClass.Select (row => new[]{
 					row.Item1, 
 					row.Item2.Length.ToString (), 
 					row.Item2.Select (@class => @class.Item2.Length).Min ().ToString (), 
 					row.Item2.Select (@class => @class.Item2.Length).Max ().ToString (), 
-					row.Item2.Select (@class => @class.Item2.Length).Average ().ToString (), 
-					@"\texttt{Omitted}" //TODO, stdev
+					row.Item2.Select (@class => @class.Item2.Length).Average ().ToString (formatString), 
+					row.Item2.Select (@class => (double)@class.Item2.Length).Stdev().ToString(formatString)
 				})
 			));
 
@@ -318,7 +412,7 @@ namespace TextCharacteristicLearner
 				result.AppendLine (latexLongTableString (
 					Enumerable.Range (0, 1).Select (val => "l |").Concat (Enumerable.Range (0, 3).Select (val => "c")),
 					"Class Name;Class Instance Count;Sum Word Count;Average Word Count".Split (';'),
-					new[]{@"\textbf{Average Class}", meanInstanceCount.ToString (formatString),  (totalWordCount / (double)classCount).ToString (), (totalWordCount / (double)totalInstanceCount).ToString (formatString)}.Cons ( //All row
+					new[]{@"\textbf{Average Class}", meanInstanceCount.ToString (formatString),  (totalWordCount / (double)classCount).ToString (formatString), (totalWordCount / (double)totalInstanceCount).ToString (formatString)}.Cons ( //All row
 						Enumerable.Range (0, classCount).Select (classIndex => 
 					    	new[]{
 								criterionData.Item2[classIndex].Item1,
@@ -346,7 +440,7 @@ namespace TextCharacteristicLearner
 				if(largeClasses.Length + smallClasses.Length > 0){
 					if(largeClasses.Length > 0){
 						result.AppendLine (@"\textbf{Oversized classes}" + "\n");
-						result.AppendLine ("These classes are larger than " + largeLim + " times the mean class size.\n"); //TODO sing/plur
+						result.AppendLine (englishCapitolizeFirst(englishCountOfString("this class is", largeClasses.Length)) + " larger than " + largeLim + " times the mean class size.\n"); //TODO sing/plur
 						
 						result.AppendLine (@"\begin{itemize}");
 						result.AppendLine (largeClasses.Select (item => "Class " + item.Item1 + " contains " + item.Item2 + " instances, which is " + (item.Item2 / meanInstanceCount).ToString (formatString) + " times the average.").FoldToString("\t\\item ", "", "\t\\item "));
@@ -357,7 +451,7 @@ namespace TextCharacteristicLearner
 
 					if(smallClasses.Length > 0){
 						result.AppendLine (@"\textbf{Undersized classes}" + "\n");
-						result.AppendLine ("These classes are smaller than " + smallLim + " times the mean class size.\n"); //TODO sing/plur
+						result.AppendLine (englishCapitolizeFirst(englishCountOfString("this class is", largeClasses.Length)) + " smaller than " + smallLim + " times the mean class size.\n"); //TODO sing/plur
 						
 						result.AppendLine (@"\begin{itemize}");
 						result.AppendLine (smallClasses.Select (item => "Class " + item.Item1 + " contains " + item.Item2 + " " + (item.Item2 == 1 ? "instance" : "instances")+ ", which is " + (item.Item2 / meanInstanceCount).ToString (formatString) + " times the average.").FoldToString("\t\\item ", "", "\t\\item "));
@@ -407,12 +501,13 @@ namespace TextCharacteristicLearner
 		internal static string colorString(string s, double d){
 			if(d < 0) d = 0;
 			else if(d > 1) d = 1;
+			if(Double.IsNaN (d)) d = .8;
 			double brightness = (1 - d) * 0.85;
 			return @"\textcolor[gray]{" + brightness.ToString (formatString) + "}{" + s + "}";
 		}
 
 		internal static string colorDouble(double d){
-			if(Double.IsNaN(d)) return colorString ("-", .8);
+			if(Double.IsNaN(d)) return colorString ("-", d);
 			else if (Double.IsPositiveInfinity(d))  return @"$\infty$";
 			else if (Double.IsNegativeInfinity (d)) return @"$-\infty$";
 			return colorString(d.ToString (formatString), d);
@@ -493,8 +588,87 @@ namespace TextCharacteristicLearner
 
 
 		}
+
+		public static string FeatureAnalysisLatexString<Ty>(IFeatureSynthesizer<Ty> synth, DiscreteSeriesDatabase<Ty> data, string criterion){
+
+			//TODO: Normalize input.
+			synth.Train (data);
+			string[] schema = synth.GetFeatureSchema();
+			string[] classes = data.Where (item => item.labels.ContainsKey (criterion)).Select (item => item.labels[criterion]).Distinct ().ToArray();
+
+			//TODO: Synthesize features from the data.  Use the resulting LabeledInstances to train a Perceptron for each class.  Sum of squares of perceptron weights for each class over number of classes is the usefulness of each term.
+
+			IGrouping<string, double[]>[] groupedLabeledInstances = data.GroupBy (item => item.labels[criterion], item => synth.SynthesizeFeatures(item)).ToArray ();
+			
+			Dictionary<string, int> classSizes = groupedLabeledInstances.ToDictionary (grp => grp.Key, grp => grp.Count ());
+
+			IEnumerable<Tuple<string, Perceptron>> perceptronByClass = classes.AsParallel ().Select (perceptronClass => 
+			    {
+				    TupleStruct<double[], int, double>[] thisPerceptronTrainingData = groupedLabeledInstances.SelectMany (grp =>
+						grp.Select (instance => new TupleStruct<double[], int, double>(instance, (grp.Key == perceptronClass) ? 1 : -1, classSizes[grp.Key]))).ToArray ();
+					
+					Perceptron p = new Perceptron(schema.Length);
+					p.Train(thisPerceptronTrainingData);
+					return new Tuple<string, Perceptron>(perceptronClass, p);
+				}
+			);
+
+			double[] usefulnessScores = new double[schema.Length];
+			foreach(Tuple<string, Perceptron> p in perceptronByClass){
+				for(int i = 0; i < schema.Length; i++){
+					usefulnessScores[i] += p.Item2.weights[i] * p.Item2.weights[i];
+				}
+			}
+
+			for(int i = 0; i < schema.Length; i++){
+				usefulnessScores[i] = (usefulnessScores[i] / classes.Length);
+			}
+			
+			double maxUsefulnessScore = usefulnessScores.Max ();
+
+			StringBuilder result = new StringBuilder();
+
+			result.AppendLine (@"\subsection{Linear classification feature utility.}");
+			result.AppendLine ("This section evaluates the utility of features for use in a linear classifier.  This is accomplished by training a linear classifier (perceptron) to recognize each class individually.");
+			result.AppendLine ();
+			result.AppendLine (@"Let the i\textsuperscript{th} such perceptron's weight vector be labeled $P_i$.  Feature $f$'s linear feature utility is defined as");
+			result.AppendLine (@"$$\sqrt{\frac{\sum_{i = 0}^{|\text{classes}|} (\frac{P_{i_f}}{|P_i|}) ^ 2}{|\text{classes}|}}$$");  //TODO: This normalization might not be complete?  I think this way, one feature per class can have score 1
+			result.AppendLine ();
+
+			/*
+			//Horizontal array
+			result.AppendLine (latexTabularString (
+				"l|".Cons (Enumerable.Range (0, schema.Length).Select (i => "c")),
+			    new IEnumerable<string>[]{
+					"Feature Name".Cons (schema),
+					"Linear Classification Feature Utility".Cons (usefulnessScores.Select(score => colorDouble (score, maxUsefulnessScore)))
+				}
+			));
+			*/
+
+			//Vertical array
+
+			int colsToUse = 4;
+
+
+			//TODO: DOn't do this.
+			string temp = formatString;
+			formatString = "G";
+			if(colsToUse > 1) result.AppendLine (@"\begin{multicols}{" + colsToUse + "}");
+			result.AppendLine (latexLongTableString (
+				"l|;c".Split (';'),
+				"Feature Name;Utility".Split (';'),
+				schema.Zip (usefulnessScores).OrderByDescending(item => item.Item2).Select (item => new[]{item.Item1, colorDouble(item.Item2, maxUsefulnessScore)})));
+			if(colsToUse > 1) result.AppendLine (@"\end{multicols}");
+
+			//Bad!
+			formatString = temp;
+
+			return result.ToString ();
+
+		}
 		
-		public static string ClassificationReportLatexString<Ty> (this IEventSeriesProbabalisticClassifier<Ty> featureSynth, DiscreteSeriesDatabase<Ty> dataToClassify, string criterionByWhichToClassify)
+		public static string ClassificationReportLatexString<Ty> (this IEventSeriesProbabalisticClassifier<Ty> featureSynth, DiscreteSeriesDatabase<Ty> dataToClassify, string criterionByWhichToClassify, double confidenceCutoff)
 		{
 			dataToClassify = dataToClassify.Filter (item => !item.labels.ContainsKey (criterionByWhichToClassify));
 
@@ -513,6 +687,10 @@ namespace TextCharacteristicLearner
 					return new Tuple<string, string, double, double[]>(item.labels["filename"], schema[maxIndex], vals[maxIndex], vals);
 				});
 
+			Tuple<IEnumerable<Tuple<string, string, double, double[]>>, IEnumerable<Tuple<string, string, double, double[]>>> confidenceSplit = classifications.Partition (item => item.Item3 >= confidenceCutoff);
+			IEnumerable<Tuple<string, string, double, double[]>> significantClassifications = confidenceSplit.Item1;
+			IEnumerable<Tuple<string, string, double, double[]>> insignificantClassifications = confidenceSplit.Item2;
+
 			int topNClasses = 5;
 
 			StringBuilder result = new StringBuilder();
@@ -525,29 +703,27 @@ namespace TextCharacteristicLearner
 			result.AppendLine ("One can generally be more confident when the primary guess has high value and the remaining guesses do not.");
 			result.AppendLine ();
 
-			classifications = classifications.ToArray ();
+			significantClassifications = significantClassifications.ToArray ();
+			int significantCount = ((Tuple<string, string, string, double, double>[])significantClassifications).Length;
 
 			result.AppendLine (latexLongTableString (
 				"l|".Cons(Enumerable.Range(0, topNClasses).Select(i => "c")),
 				"Instance Name".Cons(Enumerable.Range(0, topNClasses).Select(i => ordinal ((i + 1), true))),
-				classifications.OrderByDescending(tuple => tuple.Item3).Select (
-				item => limitLength (item.Item1, 25).Cons (item.Item4.Select ((score, index) => new Tuple<double, string>(score, schemaText[index])).OrderByDescending (tup => tup.Item1).Take (topNClasses).Select (final => final.Item2 + ":" + colorPercent (final.Item1)))
+				significantClassifications.OrderByDescending(tuple => tuple.Item3).Select (
+					item => limitLength (item.Item1, 25).Cons (item.Item4.Select ((score, index) => new Tuple<double, string>(score, schemaText[index])).OrderByDescending (tup => tup.Item1).Take (topNClasses).Select (final => final.Item2 + ":" + colorPercent (final.Item1)))
 				)
 			));
 
-			//Extremely basic overview:
+			int insignificantCount = insignificantClassifications.Count ();
+			if(insignificantCount > 0){
+				result.AppendLine ("In addition to the " + englishCountOfString ("classification", significantCount) + " shown above, " + englishCountOfString ("classification was", insignificantCount) + " omitted.");
+			}
+
+
+
 			/*
-			result.AppendLine (latexLongTableString (
-				"l;c;c".Split (';'),
-				"Instance Name;Predicted Class;Prediction Strength".Split (';'),
-				classifications.OrderByDescending(tuple => tuple.Item3).Select (
-					item => new string[]{limitLength (item.Item1, 16), item.Item2, @"\textbf{" + colorPercent(item.Item3) + "}" }
-				)
-			));
-			*/
-
-			//TODO: It may be good to get this top score into the other table as well.
-
+			//This section is probably unnecessary.  This information however does belong in the final report.
+			
 			result.AppendLine (@"\subsection{Full Report}");
 
 
@@ -568,6 +744,8 @@ namespace TextCharacteristicLearner
 					)
 				));
 			}
+
+			*/
 
 			return result.ToString ();
 
@@ -596,12 +774,11 @@ namespace TextCharacteristicLearner
 
 		//TODO: Choice to include single lines.
 		//TODO: Choice to rotate the labels
-		internal static string latexTabularLabeledMatrixString(IList<string> labels, IEnumerable<IEnumerable<string>> data){
+		internal static string latexTabularLabeledMatrixString(IList<string> labels, IEnumerable<IEnumerable<string>> data, int angle = 60){
 
 			//Prepend labels onto the first item of data
 			data = data.Select ((item, index) => labels[index].Cons (item)); 
 
-			int angle = 60;
 			bool lines = false;
 
 			StringBuilder result = new StringBuilder();
@@ -871,10 +1048,18 @@ namespace TextCharacteristicLearner
 		}
 
 		public static string englishCountOfString(string s, int count, bool preferNumeric = false){
-			return englishNumberString(count, preferNumeric) + " " + ((count == 1) ? s : plural(s));
+			return englishNumberString(count, preferNumeric) + " " + pluralPhrase(s, count);
 		}
 
+		public static Dictionary<string, string> irregularPlurals = "series:series;schema:schemata;formula:formulae;hypothesis:hypothesi;criterion:criteria;datum:data;alumna:alumnae;foot:feet;goose:geese;louse:lice;dormouse:dormice;man:men;mouse:mice;tooth:teeth;woman:women".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary ();
+
 		public static string plural(string s){
+			{
+				string plur;
+				if(irregularPlurals.TryGetValue(s, out plur)){
+					return plur;
+				}
+			}
 			//Adjectives
 			switch(s){
 				case "this":
@@ -888,29 +1073,18 @@ namespace TextCharacteristicLearner
 					return "the";
 			}
 
-			//Nouns
+			//Nominative case pluralization
 			switch(s){
-				case "formula":
-					return "formulae";
-				case "hypothesis":
-					return "hypothesi";
-				case "criterion":
-					return "criteria";
-				case "datum":
-					return "data";
-				case "series":
-					return "series";
-				case "schema":
-					return "schemata";
-
 				case "it":
 					return "they";
 			}
 
-			//Verbs
+			//Verb conjugation
 			switch(s){
 				case "is":
 					return "are";
+				case "was":
+					return "were";
 				case "has":
 					return "have";
 			}
@@ -921,10 +1095,26 @@ namespace TextCharacteristicLearner
 			if(s.EndsWith ("y")){
 				return s.Substring(0, s.Length - 1) + "es";
 			}
-			if(s.EndsWith ("o")){ //I think this is usually true.
+			if(s.EndsWith ("f")){
+				return s.Substring(0, s.Length - 1) + "ves";
+			}
+			if(s.EndsWith ("fe")){
+				return s.Substring(0, s.Length - 2) + "ves";
+			}
+			if(s.EndsWith ("s") || s.EndsWith ("ch") || s.EndsWith ("sh")){
 				return s + "es";
 			}
+
+			/*
+			if(s.EndsWith ("o")){ //this is sometimes true.
+				return s + "es";
+			}
+			*/
 			return s + "s";
+		}
+
+		public static string englishCapitolizeFirst(string s){
+			return s.Substring (0, 1).ToUpper () + s.Substring (1);
 		}
 
 	}

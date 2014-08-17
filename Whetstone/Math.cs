@@ -83,6 +83,7 @@ namespace Whetstone
 	public static class WhetstoneListMath{
 		//A spot of Boolean algebra
 
+		//TODO: It may be that these should be renamed All and Any to fit with Linq precedent.
 		public static bool Conjunction(this IEnumerable<bool> list){
 			//Note that empty conjunction is true.
 			

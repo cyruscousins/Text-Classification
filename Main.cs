@@ -24,8 +24,11 @@ namespace TextCharacteristicLearner
 			//basicClassifierTest();
 			//testClassifiers();
 
+			//runNewsClassification();
+			//runNewsClassifierDerivation();
 			//testNews ();
 			TestLatex ();
+			//TestBrokenNormalizer();
 
 			//TestNewDesign();
 			//deriveOptimalClassifier();
@@ -71,7 +74,7 @@ namespace TextCharacteristicLearner
 		public static void TestLatex ()
 		{
 
-			bool test = false;
+			bool test = true;
 
 			DiscreteSeriesDatabase<string> allData = LoadRegionsDatabase (test, true);
 
@@ -101,7 +104,18 @@ namespace TextCharacteristicLearner
 			//IEventSeriesProbabalisticClassifier<string> textClassifier // = TextClassifierFactory.TextClassifier ("region", new[]{"region", "type"});
 
 			//string documentTitle, string author, int width, int height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 8.5, 11, "../../out/spanish/spanish.tex", TextClassifierFactory.RegionsTestClassifiers(), "Spanish Language", allData, "region", test ? 1 : 8);
+			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.RegionsPerceptronTestClassifiers();
+			IFeatureSynthesizer<string> synthesizer = new CompoundFeatureSynthesizer<string>(
+				"region",
+				new IFeatureSynthesizer<string>[]{
+					new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 16, .1, false),
+					new LatinLanguageFeatureSynthesizer("region"),
+					new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
+					new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 3, 50, 2.0, false)
+				}
+			);
+
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers, "Spanish Language", allData, "region", test ? 1 : 16, synthesizer: synthesizer);
 
 			/*
 			if (classifier is SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>) {
@@ -116,17 +130,18 @@ namespace TextCharacteristicLearner
 		}
 
 		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst_Report;Posr_Report;Post_Reoprt;Post_Repoert;Post_Report;Post_Repo-rt;POST_REPORT;POST_REPORT_\'environmental_Laws_Adequate,_Implementation_Weak\';POST_REPORT_P\';POST_REPORT,_POST_REPORT;Post_Repot;Post_Reprot;Post_Rerport;Post_Roport;Post_Team;PR;Pr);(pr);PR,_PR;RSS;;Rss.;(rss;(rss)".Replace ("_", @"\_").Split (';'));
-		private static Dictionary<string, string> manualRenames = "Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.".Replace ("_", @"\_").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
-		public static void testNews(){
+		private static Dictionary<string, string> manualRenames = 
+			//"Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @"\_").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
+			new Dictionary<string, string>();
 
-			//Load the database:
+		public static DiscreteSeriesDatabase<string> getNewsDataset(string size){
 			DiscreteSeriesDatabase<string> data = new DiscreteSeriesDatabase<string> ();
 
-			using (StreamReader keyfile = File.OpenText("../../res/shirishmedkey")){
-				keyfile.BaseStream.Seek(-70 * 5000, System.IO.SeekOrigin.End);
-				keyfile.ReadLine ();
+			using (StreamReader keyfile = File.OpenText("../../res/shirish" + size + "key")){
+				//keyfile.BaseStream.Seek(-70 * 8000, System.IO.SeekOrigin.End);
+				//keyfile.ReadLine ();
 //				for(int i = 0; i < 8000; i++) keyfile.ReadLine ();
-				data.LoadTextDatabase ("../../res/shirishmed/", keyfile, 1);
+				data.LoadTextDatabase ("../../res/shirish" + size + "/", keyfile, 1);
 			}
 
 			//Do some processing on the database
@@ -148,15 +163,34 @@ namespace TextCharacteristicLearner
 				item.labels["filename"] = item.labels["filename"].RegexReplace ("([#_$&])", "\\$1");
 			}
 
+			return data;
+		}
+
+		public static void runNewsClassification(){
+			
+			DiscreteSeriesDatabase<string> data = getNewsDataset ("med");
+
+
 			//Create the classifier
 			IEventSeriesProbabalisticClassifier<string> classifier = new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 60, 0.1, false),
 				new NullProbabalisticClassifier()
 			);
 
 			//string documentTitle, string author, int width, int height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteEventSeries<Ty> dataset, string datasetTitle, string criterionByWhichToClassify
-			WriteupGenerator.ProduceClassificationReport<string>("Analysis of the Shirish Pokharel News Database", "Cyrus Cousins", 20, 20, "../../out/news/news.tex", classifier, data, "News", "author");
+			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/news.tex", classifier, data, "News", "author");
 
+		}
+		public static void runNewsClassifierDerivation ()
+		{
+
+			//Load the database:
+			DiscreteSeriesDatabase<string> data = getNewsDataset ("med");
+			//data = data.SplitDatabase (.1).Item1;
+
+
+			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.NewsTestAdvancedClassifiers();
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers, "News", data, "author", 12, new[]{"author", "location", "date"});
 		}
 
 
@@ -239,6 +273,14 @@ namespace TextCharacteristicLearner
 
 			string file = "";
 
+			bool cuba = true;
+
+			if(test) cuba = false;
+
+			if(cuba){
+				regions = "cuba".Cons (regions).ToArray ();
+			}
+
 			//string[] prefixes = new[]{"", "literatura", "historia", "lengua"};
 			//file += prefixes.Select (prefix => regions.FoldToString ((sum, val) => sum + "region" + ":" + val + ";" + "type" + ":" + "news" + " " + prefix + val, "", "", "\n")).FoldToString ("", "", "\n");
 
@@ -274,6 +316,15 @@ namespace TextCharacteristicLearner
 				}
 			}
 
+			if(cuba){
+				file += "region:cuba;type:wiki cubaisla\n";
+				file += "region:cuba;type:receta recetascuba2\n";
+				file += "region:cuba;type:receta recetascuba3\n";
+				file += "region:cuba recetascuba3\n";
+				file += "region:cuba;type:literatura lahistoriame\n";
+				file += "region:cuba;type:literatura elencuentro\n";
+			}
+
 			Console.WriteLine ("Regions Database:");
 			Console.WriteLine(file);
 
@@ -289,6 +340,8 @@ namespace TextCharacteristicLearner
 			return d;
 		}
 
+
+
 		//CLASSIFICATION:
 		public static string ClassifyDataSet<Ty>(IFeatureSynthesizer<Ty> synth, DiscreteSeriesDatabase<Ty> db, string nameField){
 			return db.data.AsParallel().Select (item => ClassifyItem(synth, item, nameField)).FoldToString ();
@@ -300,7 +353,32 @@ namespace TextCharacteristicLearner
 
 			double max = scores.Max ();
 			//TODO don't report ambiguous cases.
-			return (item.labels[nameField] + ": " + synth.SynthesizeLabelFeature(item) + " (" + max + " confidence)");
+			return (item.labels[nameField] + ": " + synth.SynthesizeLabelFeature(item) + "" +
+				"(" + max + " confidence)");
+		}
+
+
+
+
+		public static void TestBrokenNormalizer(){
+			ZScoreNormalizer normalizer = new ZScoreNormalizer(new NullProbabalisticClassifier());
+
+			double[][] data = new double[][]{
+				new double[] {-1, 100, 100, 0},
+				new double[] {0, 0, 120, 0},
+				new double[] {1, -100, 80, 0}
+			};
+
+			IEnumerable<LabeledInstance> tdata = 
+				data.Select ((vals, index) => new LabeledInstance(index.ToString(), vals));
+
+			normalizer.Train (tdata);
+
+			Console.WriteLine ("Normalizer: " + normalizer);
+
+			double[] test = {10, 10, 100, 7};
+
+			Console.WriteLine ("Z(" + test.FoldToString () + ") = " + normalizer.applyNormalization(test).FoldToString ());
 		}
 	}
 }

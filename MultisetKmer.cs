@@ -160,7 +160,7 @@ namespace TextCharacteristicLearner
 			if (o is Kmer<A>) {
 				Kmer<A> otherKmer = (Kmer<A>) o;
 				if(otherKmer.data.Count == this.data.Count){
-					return this.Zip (otherKmer, (a, b) => a.Equals (b)).All ( a => a ); //TODO is this the right equality function to use?  Do we need to handle nulls?  Can the all be expressed more succinctly?
+					return this.Zip (otherKmer, (a, b) => a.Equals (b)).Conjunction (); //TODO: Is this the right equality operator?  Nulls?
 				}
 			}
 			return false;

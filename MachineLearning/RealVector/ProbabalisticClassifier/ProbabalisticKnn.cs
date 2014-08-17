@@ -43,6 +43,7 @@ namespace TextCharacteristicLearner
 		}
 		
 		public void Train(IEnumerable<LabeledInstance> instances){
+			
 			if(!(instances is List<LabeledInstance>)){
 				instances.ToArray (); //Prevent expensive multienumerations by collapsing if necessary.
 			}

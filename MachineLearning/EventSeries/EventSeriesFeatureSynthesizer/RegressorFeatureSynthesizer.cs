@@ -81,7 +81,7 @@ namespace TextCharacteristicLearner
 			IEnumerable<Tuple<string, Multiset<Ty>>> classSets = groupings.Map (grp => Tuple.Create (grp.Key, grp.ToMultiset ())).ToArray(); //Used twice.  Make it an array.
 
 			//Establish the baseline (all data)
-			Multiset<Ty> baseline = noClass.ToMultiset ().Cons(classSets.Select (a => a.Item2)).sum();
+			Multiset<Ty> baseline = noClass.ToMultiset ().Cons(classSets.Select (a => a.Item2)).MultisetUnion();
 
 			return classSets.Map (ntp => new ItemFrequencyRegressor<Ty>(ntp.Item1, minSignificantCount, smoothingAmount, featuresToUse, baseline, ntp.Item2)).ToArray ();
 		}
@@ -120,7 +120,7 @@ namespace TextCharacteristicLearner
 			IEnumerable<Tuple<string, Multiset<Kmer<Ty>>>> classSets = groupings.Map (grp => Tuple.Create (grp.Key, grp.ToMultisetKmer (k))).ToArray(); //Used twice.  Make it an array.
 
 			//Establish the baseline (all data)
-			Multiset<Kmer<Ty>> baseline = noClass.ToMultisetKmer (k).Cons(classSets.Select (a => a.Item2)).sum();
+			Multiset<Kmer<Ty>> baseline = noClass.ToMultisetKmer (k).Cons(classSets.Select (a => a.Item2)).MultisetUnion();
 
 			return classSets.Map (ntp => new ItemKmerFrequencyRegressor<Ty>(ntp.Item1, minSignificantCount, smoothingAmount, featuresToUse, k, baseline, ntp.Item2)).ToArray ();
 		}
@@ -157,7 +157,7 @@ namespace TextCharacteristicLearner
 			Tuple<string, MultisetKmer<Ty>>[] classSets = groupings.AsParallel ().Select (grp => Tuple.Create (grp.Key, grp.ToMultisetVarKmer (k))).ToArray(); //Used twice.  Make it an array.
 
 			//Establish the baseline (all data)
-			MultisetKmer<Ty> baseline = noClass.ToMultisetVarKmer (k).Cons(classSets.Select (a => a.Item2)).sumKmers();
+			MultisetKmer<Ty> baseline = noClass.ToMultisetVarKmer (k).Cons(classSets.Select (a => a.Item2)).MultisetKmerUnion();
 
 			//Create regressors (in parallel).
 			return classSets.AsParallel ().Select (ntp => new ItemVarKmerFrequencyRegressor<Ty>(ntp.Item1, minSignificantCount, smoothingAmount, featuresToUse, k, baseline, ntp.Item2)).ToArray ();

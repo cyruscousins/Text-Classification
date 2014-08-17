@@ -130,7 +130,16 @@ namespace Whetstone
 			dict.Add (item.Key, item.Value);
 		}
 
+		public static void Add<KeyType, ValueType>(this Dictionary<KeyType, ValueType> dict, Tuple<KeyType, ValueType> item){
+			dict.Add (item.Item1, item.Item2);
+		}
+
 		public static Dictionary<KeyType, ValueType> ToDictionary<KeyType, ValueType>(this IEnumerable<KeyValuePair<KeyType, ValueType>> items){
+			Dictionary<KeyType, ValueType> dict = new Dictionary<KeyType, ValueType>();
+			items.ForEach(item => dict.Add (item));
+			return dict;
+		}
+		public static Dictionary<KeyType, ValueType> ToDictionary<KeyType, ValueType>(this IEnumerable<Tuple<KeyType, ValueType>> items){
 			Dictionary<KeyType, ValueType> dict = new Dictionary<KeyType, ValueType>();
 			items.ForEach(item => dict.Add (item));
 			return dict;

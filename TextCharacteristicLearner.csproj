@@ -75,6 +75,7 @@
     <Compile Include="MachineLearning\Auxilliary\MachineLearningAttributes.cs" />
     <Compile Include="MachineLearning\Auxilliary\Analysis\AccuracyAnalysis.cs" />
     <Compile Include="MachineLearning\Auxilliary\Visualization\LatexExtensions.cs" />
+    <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\DateValueFeatureSynthesizer.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

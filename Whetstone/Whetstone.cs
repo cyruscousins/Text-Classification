@@ -115,6 +115,19 @@ namespace Whetstone{
 			return result;
 		}
 
+		//IEnumerable.
+		//Extension Methods
+		public static IEnumerable<Tuple<int, int, B>> MapCombinations<A, B>(IList<A> data, Func<A, A, B> f){
+			//foreach(int i in Enumerable.Range(0, data.Length)){
+			//	foreach(int j in Enumerable.Range (0, i - 1).Concat (Enumerable.Range (i + 1)))
+			//}
+			for(int i = 0; i < data.Count; i++){
+				for(int j = i + 1; j < data.Count; j++){
+					yield return new Tuple<int, int, B>(i, j, f(data[i], data[j]));
+				}
+			}
+		}
+
 		//TODO: Does this exist?  It's a bit like a mix between "Filter" and "GroupBy"
 		public static Tuple<IEnumerable<Ty>, IEnumerable<Ty>> Partition<Ty>(this IEnumerable<Ty> data, Predicate<Ty> predicate){
 			List<Ty> a = new List<Ty>();
@@ -188,9 +201,6 @@ namespace Whetstone{
 			arr[i0] = arr[i1];
 			arr[i1] = temp;
 		}
-
-
-
 
 		public static IEnumerable<Ty> Order<Ty>(this IEnumerable<Ty> items){
 			return items.OrderBy(a => a);

@@ -90,7 +90,7 @@ namespace TextCharacteristicLearner
 
 			MultisetKmer<Ty> baseline;
 			if(useUncategorizedForBaseline){
-				baseline = classlessSeries.ToMultisetVarKmer(k).Cons (classes.Select (@class => @class.Item2)).sumKmers (); //TODO reuse the classless multiset.
+				baseline = classlessSeries.ToMultisetVarKmer(k).Cons (classes.Select (@class => @class.Item2)).MultisetKmerUnion (); //TODO reuse the classless multiset.
 			}
 			else{
 				baseline = classedSeries.ToMultisetVarKmer(k);

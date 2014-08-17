@@ -32,15 +32,15 @@ namespace TextCharacteristicLearner
 		public string[] datasetSchemaTextRotated;
 
 		//Classifications
-		List<Tuple<string, string, string, double[], double>> classificationInstances;
+		public List<Tuple<string, string, string, double[], double>> classificationInstances;
 
 		//Confusion matrices
-		int[,] confusionMatrixCounts; // [a,b] : How often a is classified as b 
-		double[,] confusionMatrixScores;
+		public int[,] confusionMatrixCounts; // [a,b] : How often a is classified as b 
+		public double[,] confusionMatrixScores;
 
 		//Confusion matrices by confidence
-		int[][,] countsConfusionMatricesByConfidence;
-		double[][,] scoresConfusionMatricesByConfidence;
+		public int[][,] countsConfusionMatricesByConfidence;
+		public double[][,] scoresConfusionMatricesByConfidence;
 
 		//Counts
 		double[] countColumnSums;
@@ -424,6 +424,12 @@ namespace TextCharacteristicLearner
 				    	Enumerable.Range (0, classCount).Select (column => LatexExtensions.colorPercent(confusionMatrixScores[row, column] / LatexExtensions.fzeroToOne (scoreRowSums[row]), 1)))));
 			}
 
+			// Derivatino of the minimum bucket index:
+			// minimum selectable confidence = 1.0 / class count
+			// bucketsize = 1.0 / bucket count
+			// index of minimum bucket = floor(minimum selectable confidence / bucket size) = floor(bucket count / class count)
+			int minPredictionBucketIndex = (int)Math.Floor (bucketCount / (double)classCount);
+			int bucketsToEnumerate = bucketCount - minPredictionBucketIndex;
 
 
 			//Confidence Accuracy Tradeoff
@@ -437,8 +443,8 @@ namespace TextCharacteristicLearner
 			result.AppendLine (@"\par\bigskip");
 			result.AppendLine ("\n\n\\textbf{Accuracy by Prediction Strength}\n");
 			result.AppendLine (LatexExtensions.latexMatrixString ("bmatrix", true, new[]{
-				new[]{@"\text{E[Random]}", @"\mathbf{[0, 1]}"}.Concat (Enumerable.Range (0, bucketCount).Select (b => @"[" + (b * bucketSize).ToString("0.##") + ", " + ((b + 1) * bucketSize).ToString("0.##") + @"]")), //TODO: Pull this out to a function, make intervals properly.
-				new[]{expectedAccuracyRandom, overallAccuracy}.Concat(Enumerable.Range (0, bucketCount).Select (b => accuracyByPredictedClassAndConfidence[0, b])).Select(item => LatexExtensions.colorPercent (item))
+				new[]{@"\text{E[Random]}", @"\mathbf{[0, 1]}"}.Concat (Enumerable.Range (minPredictionBucketIndex, bucketsToEnumerate).Select (b => @"[" + (b * bucketSize).ToString("0.##") + ", " + ((b + 1) * bucketSize).ToString("0.##") + @"]")), //TODO: Pull this out to a function, make intervals properly.
+				new[]{expectedAccuracyRandom, overallAccuracy}.Concat(Enumerable.Range (minPredictionBucketIndex, bucketsToEnumerate).Select (b => accuracyByPredictedClassAndConfidence[0, b])).Select(item => LatexExtensions.colorPercent (item))
 			}));
 
 			//TODO: This should not be a row (row 0) of the matrix.  This duplicates information and unnecessarily complicates the contract...
@@ -465,7 +471,7 @@ namespace TextCharacteristicLearner
 						@"\mathbf{[0, 1]}".Cons((@"\mathbf{" + LatexExtensions.colorPercent (overallAccuracy) + "}").Cons(Enumerable.Range (0, classCount).Select (c => LatexExtensions.colorPercent(confusionMatrixCounts[c,c] / (double)countColumnSums[c])))), //[0, 1] row //TODO: sumscoreaccuracies
 						new[]{"\t\\\\\n"} //Blank row
 					}.Concat (
-						Enumerable.Range (0, bucketCount).Select (
+						Enumerable.Range (minPredictionBucketIndex, bucketsToEnumerate).Select (
 							b => (@"[" + (b * bucketSize).ToString("0.##") + ", " + ((b + 1) * bucketSize).ToString("0.##") + "]").Cons(
 							Enumerable.Range (0, classCount + 1).Select (c => LatexExtensions.colorPercent(accuracyByPredictedClassAndConfidence[c, b]))))
 					)
@@ -488,7 +494,7 @@ namespace TextCharacteristicLearner
 						@"\mathbf{[0, 1]}".Cons((@"\mathbf{" + LatexExtensions.colorPercent (overallAccuracy) + "}").Cons(Enumerable.Range (0, classCount).Select (c => LatexExtensions.colorPercent(classCountAccuracies[c])))), //[0, 1] row
 						new[]{"\t\\\\\n"} //Blank row
 					}.Concat (
-						Enumerable.Range (0, bucketCount).Select (
+						Enumerable.Range (minPredictionBucketIndex, bucketsToEnumerate).Select (
 							b => (@"[" + (b * bucketSize).ToString("0.##") + ", " + ((b + 1) * bucketSize).ToString("0.##") + "]").Cons(
 							Enumerable.Range (0, classCount + 1).Select (c => LatexExtensions.colorPercent(accuracyByTrueClassAndConfidence[c, b]))))
 					)
@@ -496,9 +502,6 @@ namespace TextCharacteristicLearner
 			}
 
 			//May be good to have a space filling charts of correct vs incorrect classifications by confidence.
-
-			//TODO: Insights section.
-
 			
 			result.AppendLine (@"\subsection{Insights}");
 			result.AppendLine ("This subsection presents insights that can be gleaned from the above data.  It is particularly useful for large datasets, where it is difficult to interpret results presented in enormous matrices.");
@@ -508,7 +511,7 @@ namespace TextCharacteristicLearner
 			result.AppendLine (@"\begin{itemize}");
 			result.AppendLine (Enumerable.Range (0, classCount).Select(
 								i => new Tuple<string, double>(datasetSchema[i], (countColumnSums[i] - countRowSums[i]) / instancesClassifiedDouble)).Where (item => Math.Abs (item.Item2) > .02).OrderByDescending(item => Math.Abs (item.Item2)).Take(20).Select(
-									tup => "The classifier is " + LatexExtensions.quantificationAdverbPhrase(Math.Abs (tup.Item2)) + " skewed " + ((tup.Item2 > 0) ? "toward" : "against") + " class \"" + tup.Item1 + "\" by " + LatexExtensions.colorPercent(Math.Abs (tup.Item2)) + ".").FoldToString("\t\\item ", "", "\t\\item "));
+									tup => "The classifier is " + LatexExtensions.quantificationAdverbPhrase(Math.Abs (Math.Pow(tup.Item2, .9))) + " skewed " + ((tup.Item2 > 0) ? "toward" : "against") + " class \"" + tup.Item1 + "\" by " + LatexExtensions.colorPercent(Math.Abs (tup.Item2)) + ".").FoldToString("\t\\item ", "", "\t\\item "));
 			result.AppendLine (@"\end{itemize}");
 
 			result.AppendLine(@"\par\bigskip");
@@ -520,107 +523,151 @@ namespace TextCharacteristicLearner
 			result.AppendLine (@"\end{itemize}");
 
 			result.AppendLine(@"\par\bigskip");
-			result.AppendLine (@"\textbf{Poor Class Performance Detection}");
-			result.AppendLine (@"\begin{itemize}");
-			result.AppendLine (Enumerable.Range (0, classCount).Select(
-								i => new Tuple<string, double>(datasetSchema[i], classCountAccuracies[i])).Where (item => Math.Abs (item.Item2) < .5).OrderBy(item => Math.Abs (item.Item2)).Take(15).Select(
-								tup => "Instances of class \"" + tup.Item1 + "\" are " + LatexExtensions.frequencyQuantificationAdverbPhrase(1 - tup.Item2) + " misclassified (" + LatexExtensions.colorPercent(Math.Abs (tup.Item2)) + " accuracy).  "
-									+ ((tup.Item2 < expectedAccuracyRandom) ? (@"\textit{This performance is worse than that of random selection} (" + LatexExtensions.colorPercent (expectedAccuracyRandom) + ").") : ""))
-									.FoldToString("\t\\item ", "", "\t\\item "));
-			result.AppendLine (@"\end{itemize}");
 
-			result.AppendLine(@"\par\bigskip");
+			//TODO: Don't show for empties ^^^
+
+			//Poor class accuracy insights:
+			{
+				double poorCutoff = Math.Min (.5, expectedAccuracyRandom + topClassSelectionAccuracy);
+				int poorClassesMax = 15;
+				Tuple<string, double>[] poorClasses = Enumerable.Range (0, classCount).Select(i => new Tuple<string, double>(datasetSchema[i], classCountAccuracies[i])).Where (item => Math.Abs (item.Item2) < poorCutoff).OrderBy(item => Math.Abs (item.Item2)).ToArray();
+
+				if(poorClasses.Length > 0){
+					result.AppendLine (@"\subsubsection{Poor Class Performance Detection}");
+					result.AppendLine ("Instances of " + LatexExtensions.englishCountOfString("class", poorClasses.Length) + " were classified poorly.\n");
+					result.AppendLine (@"\begin{itemize}");
+					result.AppendLine (poorClasses.Take(poorClassesMax).Select(
+										tup => "Instances of class \"" + tup.Item1 + "\" are " + LatexExtensions.frequencyQuantificationAdverbPhrase(1 - tup.Item2) + " misclassified (" + LatexExtensions.colorPercent(Math.Abs (tup.Item2)) + " accuracy).  "
+											+ ((tup.Item2 < expectedAccuracyRandom) ? (@"\textit{This performance is worse than that of random selection} (" + LatexExtensions.colorPercent (expectedAccuracyRandom) + ").") : ""))
+											.FoldToString("\t\\item ", "", "\t\\item "));
+					result.AppendLine (@"\end{itemize}");
+					if(poorClasses.Length > poorClassesMax){
+						result.AppendLine(@"\textit{Top " + poorClassesMax + " most misclassified classes shown above, " + (poorClasses.Length - poorClassesMax) + " classes omitted.");
+					}
+
+					result.AppendLine(@"\par\bigskip");
+				}
+			}
 
 
-			result.AppendLine (@"\textbf{Possible Class Equivalence}");
-			result.AppendLine ("With poor data quality, instances are often mislabeled.  In this section, possible mislabeling events are noted.");
-			result.AppendLine ("Results are based on misclassification frequencies, lexicographic distances, relative abundances, and total class count.");
 
-			result.AppendLine (@"\par\bigskip");
+
+
+
+			//POSSIBLE CLASS EQUIVALENCE
 
 			//Calculate error rate between strings using Levenshtein distance 
 			double[,] levErrorRates = LevenshteinDistance.ErrorRateMatrix(datasetSchema);
-			int[] instanceCounts = new int[classCount]; //TODO: Use column counts.
 
-			//Figure out how many instances are in each class.
-			IEnumerable<string> classNames = labeledData.Select (item => item.labels[criterionByWhichToClassify]);
-			foreach(string s in classNames){
-				instanceCounts[schemaMapping[s]]++;
-			}
-
+			double levErrorCutoff = .4;
 
 			result.AppendLine ();
 
-			result.AppendLine ("Case 1: A small class is frequently mistaken for a large class.");
+			double errorFactor = .8;
+
+			double minErrorRate1 = overallAccuracy * errorFactor;
 
 			//TODO: Program this right.  None of this "for loop" business.
 
-			//Name1, Name2, LevError, Instances1, Instances2, Confusion 1->2, Confusion 2->1
-			List<Tuple<string, string, double, int, int, double, double>> type1Mistakes = new List<Tuple<string, string, double, int, int, double, double>>();
+			//Name1, Name2, LevError, Instances1, Instances2, Confusion 1->2, Confusion 2->1, "Class Similarity Score
+			List<TupleStruct<string, string, double, int, int, double, double, double>> type1Mistakes = new List<TupleStruct<string, string, double, int, int, double, double, double>>();
 			for(int i = 0; i < classCount; i++){
 				for(int j = 0; j < classCount; j++){
 					if(i == j) continue;
-					double ijConfusion = confusionMatrixCounts[i,j] / (double)instanceCounts[i];
-					double jiConfusion = confusionMatrixCounts[j,i] / (double)instanceCounts[j];
-					if(levErrorRates[i,j] < .25 && instanceCounts[i] < instanceCounts[j] / 2 && ijConfusion > .0125){
-						type1Mistakes.Add (new Tuple<string, string, double, int, int, double, double>
+					double ijConfusion = confusionMatrixCounts[i,j] / (double)countRowSums[i];
+					double jiConfusion = confusionMatrixCounts[j,i] / (double)countRowSums[j];
+					if(levErrorRates[i,j] < levErrorCutoff && countRowSums[i] < countRowSums[j] / 3 && ijConfusion > minErrorRate1){
+						type1Mistakes.Add (new TupleStruct<string, string, double, int, int, double, double, double>
 		                    (
-								datasetSchema[i], datasetSchema[j], levErrorRates[i,j], instanceCounts[i], instanceCounts[j], ijConfusion, jiConfusion
+								datasetSchema[i], datasetSchema[j], 
+								levErrorRates[i,j], 
+								(int)countRowSums[i], (int)countRowSums[j], 
+								ijConfusion, 
+								jiConfusion, ijConfusion / (1 + levErrorRates[i, j] + countRowSums[i] / countRowSums[j] )
 							)
 						);
 					}
 				}
 			}
 
-			result.AppendLine (LatexExtensions.latexLongTableString(
-				"l;l;c;c;c;c;c".Split (';'),
-				"Class A;Class B;Name Distance;Class A Size;Class B Size;A $\\rightarrow$ B rate;B $\\rightarrow$ A rate".Split (';'),
-				type1Mistakes.Select (item =>
-			     	new[]{
-						item.Item1, 
-						item.Item2, 
-						"\\mathbf{" + item.Item3 +"}", 
-						item.Item4.ToString(), 
-						item.Item5.ToString(), 
-						LatexExtensions.colorDouble(item.Item6), 
-						LatexExtensions.colorDouble (item.Item7)
-					}
-			)));
+		
+			HashSet<Tuple<string, string>> type1Pairs = new HashSet<Tuple<string, string>>(type1Mistakes.Select (item => new Tuple<string, string>(item.Item1, item.Item2)).Concat (type1Mistakes.Select (item => new Tuple<string, string>(item.Item2, item.Item1))));
 
+			double minErrorRate2 = overallAccuracy * errorFactor / 2; // Only half can be expected to be misclassified this time.
+			double sizeDiffCutoff = 4;
 
-			result.AppendLine ();
-			result.AppendLine ("Case 2: Two similarly sized classes are frequently confused.");
-
-			List<Tuple<string, string, double, int, int, double, double>> type2Mistakes = new List<Tuple<string, string, double, int, int, double, double>>();
+			List<TupleStruct<string, string, double, int, int, double, double, double>> type2Mistakes = new List<TupleStruct<string, string, double, int, int, double, double, double>>();
 			for(int i = 0; i < classCount; i++){
 				for(int j = i + 1; j < classCount; j++){
-					
-					double ijConfusion = confusionMatrixCounts[i,j] / (double)instanceCounts[i];
-					double jiConfusion = confusionMatrixCounts[j,i] / (double)instanceCounts[j];
-					if(levErrorRates[i,j] < .25 && instanceCounts[i] < instanceCounts[j] * 8 && instanceCounts[j] < instanceCounts[i] * 8 && ijConfusion > .015 && jiConfusion > .015 && Math.Abs (ijConfusion - jiConfusion) < .925){
-						type1Mistakes.Add (new Tuple<string, string, double, int, int, double, double>
+					double ijConfusion = confusionMatrixCounts[i,j] / (double)countRowSums[i];
+					double jiConfusion = confusionMatrixCounts[j,i] / (double)countRowSums[j];
+					if(levErrorRates[i,j] < levErrorCutoff && countRowSums[i] < countRowSums[j] * sizeDiffCutoff && countRowSums[j] < countRowSums[i] * sizeDiffCutoff && ijConfusion > minErrorRate2 && jiConfusion > minErrorRate2 && Math.Abs (ijConfusion - jiConfusion) < .25){
+						type2Mistakes.Add (new TupleStruct<string, string, double, int, int, double, double, double>
 		                    (
-								datasetSchema[i], datasetSchema[j], levErrorRates[i,j], instanceCounts[i], instanceCounts[j], ijConfusion, jiConfusion
+								datasetSchema[i], datasetSchema[j], 
+								levErrorRates[i,j], 
+							 	(int)countRowSums[i], (int)countRowSums[j], 
+								ijConfusion, jiConfusion, 
+								(ijConfusion + jiConfusion) / (2 * (1 + levErrorRates[i, j]) + (2 * Math.Abs(countRowSums[i] - countRowSums[j]) / (countRowSums[i] + countRowSums[j])))
 							)
 						);
 					}
 				}
 			}
 
-			result.AppendLine (LatexExtensions.latexLongTableString(
-				"l;l;c;c;c;c;c".Split (';'),
-				"Class A;Class B;Name Distance;Class A Size;Class B Size;A $\\rightarrow$ B rate;B $\\rightarrow$ A rate".Split (';'),
-				type2Mistakes.Select (item =>
-			     	new[]{
-						item.Item1, 
-						item.Item2, 
-						"\\mathbf{" + item.Item3 +"}", 
-						item.Item4.ToString(), 
-						item.Item5.ToString(), 
-						LatexExtensions.colorDouble(item.Item6), 
-						LatexExtensions.colorDouble (item.Item7)
-					}
-			)));
+			if(type1Mistakes.Count + type2Mistakes.Count > 0){
+				result.AppendLine (@"\subsubsection{Possible Class Equivalence}");
+				result.AppendLine ("With poor data quality, instances are often mislabeled.  In this section, possible mislabeling events are noted.");
+				result.AppendLine ("Results are based on misclassification frequencies, lexicographic distances, relative abundances, and total class count.");
+
+				result.AppendLine (@"\par\bigskip");
+
+				if(type1Mistakes.Count > 0){
+					
+					result.AppendLine ("Case 1: A small class is frequently mistaken for a large class.");
+
+					result.AppendLine (LatexExtensions.latexLongTableString(
+						"l;l|;c;c|;c;c|;c;c".Split (';'),
+						"Class A;Class B;Class Similarity Score;Name Distance;Class A Size;Class B Size;A $\\rightarrow$ B rate;B $\\rightarrow$ A rate".Split (';'),
+						type1Mistakes.OrderBy (item => item.Item8).Select (item =>
+					     	new[]{
+								item.Item1, 
+								item.Item2, 
+								@"$\mathbf{" + LatexExtensions.colorDouble(1 - item.Item8) + "}",
+								@"$\mathbf{" + item.Item8.ToString (LatexExtensions.formatString) +"}$", 
+								item.Item4.ToString(), 
+								item.Item5.ToString(), 
+								LatexExtensions.colorDouble(item.Item6), 
+								LatexExtensions.colorDouble (item.Item7)
+							}
+					)));
+				}
+
+				if(type2Mistakes.Count > 0)
+				{
+					result.AppendLine ();
+					result.AppendLine ("Case 2: Two similarly sized classes are frequently confused.");
+
+					result.AppendLine (LatexExtensions.latexLongTableString(
+						"l;l|;c;c|;c;c|;c;c".Split (';'),
+						"Class A;Class B;Class Similarity Score;Name Distance;Class A Size;Class B Size;A $\\rightarrow$ B rate;B $\\rightarrow$ A rate".Split (';'),
+						type2Mistakes.Where (item => !type1Pairs.Contains(new Tuple<string, string>(item.Item1, item.Item2)))
+						.OrderBy (item => item.Item8)
+						.Select (item =>
+					     	new[]{
+								item.Item1, 
+								item.Item2, 
+								@"$\mathbf{" + LatexExtensions.colorDouble(1 - item.Item8) + "}",
+								@"$\mathbf{" + item.Item3.ToString (LatexExtensions.formatString) +"}$", 
+								item.Item4.ToString(), 
+								item.Item5.ToString(), 
+								LatexExtensions.colorDouble(item.Item6), 
+								LatexExtensions.colorDouble (item.Item7),
+							}
+					)));
+				}
+
+			}
 
 			//result.AppendLine ("Found " + type1Mistakes.Count + "type 1 mistakes and " + type2Mistakes.Count + " type 2 mistakes.");
 

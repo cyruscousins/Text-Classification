@@ -17,7 +17,7 @@ namespace TextCharacteristicLearner
 	public interface IProbabalisticClassifier
 	{
 		string[] GetClasses();
-		void Train(IEnumerable<LabeledInstance> trainingData);
+		void Train(IEnumerable<LabeledInstance> trainingData); //TODO: Prepend string[] classes to arguments, refactor.
 
 		double[] Classify(double[] values);
 	}
