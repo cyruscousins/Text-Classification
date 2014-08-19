@@ -132,7 +132,7 @@ namespace TextCharacteristicLearner
 
 			doc.Append (@"\subsection{Classifier Comparison Shared Confusion Matrix}");
 			
-			doc.Append (@"For classes $A, B,$ with score confusion matrices $\mathbf{A}, \mathbf{B}$, shared confusion is defined as $$\sum_{i = 1}^{|\text{classes}|}\sum_{j \in [1, \text{classes}] / \{i\}} \sqrt{\min(0, \textbf{A}_{ij} * \textbf{B}_{ij})}$$");
+			doc.Append (@"For classes $A, B,$ with score confusion matrices $\mathbf{A}, \mathbf{B}$, shared confusion is defined as $$\sum_{i = 1}^{|\text{classes}|}\sum_{j \in (1, \hdots, |\text{classes}|) \setminus (i)} \sqrt{\min(0, \textbf{A}_{ij} * \textbf{B}_{ij})}$$");
 			doc.Append ("");
 
 
@@ -167,7 +167,7 @@ namespace TextCharacteristicLearner
 
 				doc.Append (@"\section{Feature Synthesizer and Classifier Overview for " + classifierAnalysis.Item1 + "}\n\n");
 				doc.Append (@"\label{sec:classifier " + classifierAnalysis.Item1 + "}");
-				doc.Append (classifierAnalysis.Item2.classifier.ClassifierLatexString("Author Classifier", (int)((width - 1.6) * 13)));
+				doc.Append (classifierAnalysis.Item2.classifier.ClassifierLatexString(LatexExtensions.englishCapitolizeFirst(criterionByWhichToClassify) + "Classifier", (int)((width - 1.6) * 13.5)));
 
 				//Console.WriteLine ("Generated Classifier Overview.");
 
@@ -533,7 +533,7 @@ namespace TextCharacteristicLearner
 			else{
 				valStr = val.ToString (formatString);
 			}
-			return colorString (val.ToString (formatString), val / outof);
+			return colorString (valStr, val / outof);
 		}
 
 		internal static string colorPercent(double d, int places = 2){
@@ -708,7 +708,7 @@ namespace TextCharacteristicLearner
 			result.AppendLine ("The concept of maximal subset linear classification feature utility captures this concept, and is defined as the like so:");
 			result.AppendLine (@"$$\text{maxsublcfu}(f) = \max\Big(\big\{\text{linfu}(x): x \in \{\mathcal{P}(\text{classes})\} \setminus \emptyset \big\}\Big)$$");
 			//as the absolute value of the maximum weight of ")
-			result.AppendLine (@"The above definition represents a powerful concept, as it captures the features linear classification feature utility over the subset of classes for which the feature is most useful.  Although of combinatorial complexity when computed naïvely, it can be shown that the above definition is equivalent, for each f, to $$\max\Big(\big\{\frac{|P_{i_f}|}{||P_i||}: i = \{1, \hdots, |\text{classes}|\}\big\}\Big)$$.");
+			result.AppendLine (@"The above definition represents a powerful concept, as it captures the features linear classification feature utility over the subset of classes for which the feature is most useful.  Although of combinatorial complexity when computed naïvely, it can be shown that the above definition is equivalent, for each f, to $$\max\Big(\big\{\frac{|P_{i_f}|}{||P_i||}: i = (1, \hdots, |\text{classes}|)\big\}\Big)$$.");
 			/*
 			//Horizontal array
 			result.AppendLine (latexTabularString (
