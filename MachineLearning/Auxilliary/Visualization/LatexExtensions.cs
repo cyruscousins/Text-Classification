@@ -266,6 +266,9 @@ namespace TextCharacteristicLearner
 
 \usepackage{multicol}
 
+\usepackage{relsize}
+
+
 " + "\\usepackage[margin=" + margin + "in, paperwidth=" + width + "in, paperheight=" + height + "in]{geometry}\n"
 
  + "\\title{" + title + "}\n\\author{" + author + "}\n\n" +
@@ -633,7 +636,8 @@ namespace TextCharacteristicLearner
 			//Normalize the labeled instances
 			foreach(Tuple<string, double[]> instance in labeledInstances){
 				for(int i = 0; i < schema.Length; i++){
-					if(featureStats[i][3] != 0) instance.Item2[i] = (instance.Item2[i] - featureStats[i][2]) / featureStats[i][3];
+					instance.Item2[i] = (instance.Item2[i] - featureStats[i][2]); //Mean to 0
+					if(featureStats[i][3] != 0) instance.Item2[i] /= featureStats[i][3]; //Fix stdev
 				}
 			}
 
@@ -699,12 +703,12 @@ namespace TextCharacteristicLearner
 			result.AppendLine ("This section evaluates the utility of features for use in a linear classifier.  This is accomplished by training a linear classifier (perceptron) to recognize each class individually.  All trainging is performed on normalized training data.");
 			result.AppendLine ();
 			result.AppendLine (@"Let the i\textsuperscript{th} such perceptron's weight vector be labeled $P_i$.  Feature $f$'s linear feature utility is defined as");
-			result.AppendLine (@"$$\sqrt{\frac{\sum_{i = 0}^{|\text{classes}|} (\frac{P_{i_f}}{||P_i||}) ^ 2}{|\text{classes}|}}$$");  //TODO: This normalization might not be complete?  I think this way, one feature per class can have score 1
+			result.AppendLine (@"$$\text{lincfu}(f) = \sqrt{\frac{\mathlarger\sum_{i = 0}^{|\text{classes}|} \Big(\frac{P_{i_f}}{||P_i||}\Big) ^ 2}{|\text{classes}|}}$$");  //TODO: This normalization might not be complete?  I think this way, one feature per class can have score 1
 			result.AppendLine ("Linear classification feature utility is useful for identifying features that are generally useful.  Many features are only useful for detection of specific classes; such features generally have low linear classification feature utility, and are better identified by determining how useful a feature is in the class where it is maximally useful.");
 			result.AppendLine ("The concept of maximal subset linear classification feature utility captures this concept, and is defined as the like so:");
-			result.AppendLine (@"$$\max(\{\text{Linear Classification Feature Utility}(x): x \in \{\mathcal{P}(\text{classes})\}\} \setminus \emptyset )$$");
+			result.AppendLine (@"$$\text{maxsublcfu}(f) = \max\Big(\big\{\text{linfu}(x): x \in \{\mathcal{P}(\text{classes})\} \setminus \emptyset \big\}\Big)$$");
 			//as the absolute value of the maximum weight of ")
-			result.AppendLine (@"The above definition represents a powerful concept, as it captures the features linear classification feature utility over the subset of classes for which the feature is most useful.  Although of combinatorial complexity when computed naïvely, it can be shown that the above definition is equivalent, for each f, to $$\max(\{\frac{|P_{i_f}}{||P_i||}|: i = \{1, \hdots, |\text{classes}|\}\})$$.");
+			result.AppendLine (@"The above definition represents a powerful concept, as it captures the features linear classification feature utility over the subset of classes for which the feature is most useful.  Although of combinatorial complexity when computed naïvely, it can be shown that the above definition is equivalent, for each f, to $$\max\Big(\big\{\frac{|P_{i_f}|}{||P_i||}: i = \{1, \hdots, |\text{classes}|\}\big\}\Big)$$.");
 			/*
 			//Horizontal array
 			result.AppendLine (latexTabularString (
@@ -727,8 +731,10 @@ namespace TextCharacteristicLearner
 			formatString = "G3";
 			if(colsToUse > 1) result.AppendLine (@"\begin{multicols}{" + colsToUse + "}");
 			result.AppendLine (latexLongTableString (
-				"l|;p{1.5in};p{1.5in}".Split (';'),
-				"Feature Name;Linear Classification Feature Utility;Maximal Subset Linear Classification Feature Utility".Split (';'),
+				//"l|;p{1.5in};p{1.5in}".Split (';'),
+				//"Feature Name;Linear Classification Feature Utility;Maximal Subset Linear Classification Feature Utility".Split (';'),
+				"l|;c;c".Split (';'),
+				"Feature Name;lincfu;maxsublcfu".Split (';'),
 				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{item.Item1, colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
 			if(colsToUse > 1) result.AppendLine (@"\end{multicols}");
 
@@ -736,6 +742,8 @@ namespace TextCharacteristicLearner
 			formatString = temp;
 
 			//TODO: Solo quality and "drop cost"
+
+			//TODO: Some sort of multivariate significance test.
 
 			return result.ToString ();
 
