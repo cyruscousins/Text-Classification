@@ -164,7 +164,7 @@ namespace TextCharacteristicLearner
 			List<TupleStruct<Kmer<Ty>, double>> thisClassCharacteristicKmersStore = new List<TupleStruct<Kmer<Ty>, double>>(); 
 			foreach(KeyValuePair<Kmer<Ty>, uint> kvp in thisClass){
 				if(kvp.Value > minKmerCount){
-					double thisFreq = kvp.Value / (double) thisClass.Size (kvp.Key.data.Count);
+					double thisFreq = kvp.Value / (double) thisClass.Size (kvp.Key.Count);
 					double baseFreq = baseline.GetKeyFracLaplace(kvp.Key, smoothingAmt);
 
 					//Console.WriteLine ("Class: " +  classIndex + " Kmer: " + kvp.Value + ", class freq " + thisFreq + ", base freq " + baseFreq);

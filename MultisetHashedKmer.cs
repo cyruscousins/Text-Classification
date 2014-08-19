@@ -30,13 +30,13 @@ namespace TextCharacteristicLearner
 		}
 
 		public void AddKmer(Kmer<Tyvar> toAdd){
-			data[toAdd.data.Count].Add (toAdd);
-			sizes[toAdd.data.Count]++;
+			data[toAdd.Count].Add (toAdd);
+			sizes[toAdd.Count]++;
 		}
 
 		public void AddKmer(Kmer<Tyvar> toAdd, uint count){
-			data[toAdd.data.Count].Add (toAdd, count);
-			sizes[toAdd.data.Count] += count;
+			data[toAdd.Count].Add (toAdd, count);
+			sizes[toAdd.Count] += count;
 		}
 
 		public void AddKmers(IEnumerable<Tyvar> toAdd, uint k){
@@ -61,19 +61,19 @@ namespace TextCharacteristicLearner
 		}
 
 		public uint getCount(Kmer<Tyvar> item){
-			return data[item.data.Count].getCount (item);
+			return data[item.Count].getCount (item);
 		}
 
 		public void ConsumeEventSeriesKmer(IEnumerable<Tyvar> s){
 			AddKmers (s);
 		}
 		public double GetKeyFrac(Kmer<Tyvar> v){
-			//Console.WriteLine ("f(" + v + ") = " + (double)getCount (v) + " / " + (double)sizes[v.data.Count]);
-			return (double)getCount (v) / (double)sizes[v.data.Count];
+			//Console.WriteLine ("f(" + v + ") = " + (double)getCount (v) + " / " + (double)sizes[v.Count]);
+			return (double)getCount (v) / (double)sizes[v.Count];
 		}
 
 		public double GetKeyFracLaplace(Kmer<Tyvar> val, double smoothingAmt){
-			return ((double)getCount (val) + smoothingAmt) / ((double)sizes[val.data.Count] + smoothingAmt); //TODO is this laplacian smoothing?
+			return ((double)getCount (val) + smoothingAmt) / ((double)sizes[val.Count] + smoothingAmt); //TODO is this laplacian smoothing?
 		}
 		public double GetKeyFracLaplace(Kmer<Tyvar> val){
 			return GetKeyFracLaplace (val, 1);
@@ -91,7 +91,8 @@ namespace TextCharacteristicLearner
 		public IEnumerable<Kmer<Tyvar>> Keys{ get { return data.Map (a => a.Keys).Flatten1(); } } 
 		
 	}
-
+	/*
+	
 	public struct Kmer<A> : IEnumerable<A>{
 
 		//TODO: The implementation of this class is a mess, primarily because ArraySegment is completely broken in the version of C# this code targets.
@@ -159,7 +160,98 @@ namespace TextCharacteristicLearner
 		{
 			if (o is Kmer<A>) {
 				Kmer<A> otherKmer = (Kmer<A>) o;
-				if(otherKmer.data.Count == this.data.Count){
+				if(otherKmer.Count == this.Count){
+					return this.Zip (otherKmer, (a, b) => a.Equals (b)).Conjunction (); //TODO: Is this the right equality operator?  Nulls?
+				}
+			}
+			return false;
+		}
+
+		public override string ToString(){
+			return this.FoldToString(a => a.ToString ());
+		}
+	}
+	 */ 
+
+	//TODO: Rename to HashedKmer, ressurect Kmer.  Make immutable
+	public struct Kmer<A> : IEnumerable<A>{
+
+		//TODO: The implementation of this class is a mess, primarily because ArraySegment is completely broken in the version of C# this code targets.
+		private ArraySlice_t<A> data;
+		int hash;
+
+		//Accessors:
+		public uint Count {
+			get{return data.Count;}
+		}
+
+
+		//IENUMERABLE:
+
+		
+		//TODO: Update to a runtime where this class is already IEnumerable.
+		public IEnumerator<A> GetEnumerator(){
+			return data.GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator(){ //TODO it is totally broken that this needs to be implemented.  Why?
+			return GetEnumerator ();
+		}
+
+		public A this[int i]{
+			get { return data[i]; }
+			set { data[i] = value; }
+		}
+
+		//CONSTRUCTOR:
+
+		public Kmer(ArraySlice_t<A> data){
+			this.data = data;
+			hash = hashCode(data);
+		}
+
+		public Kmer(A[] a, uint start, uint size) : this(new ArraySlice_t<A>(a, start, size)){ }
+		
+		public void RehashKmer(){
+			hash = hashCode(data);
+		}
+
+		//HASHING:
+
+		private static uint RotateLeft(uint value, int count)
+		{
+		    return (value << count) | (value >> (sizeof(uint) - count));
+		}
+		private static uint RotateRight(uint value, int count)
+		{
+		    return (value >> count) | (value << (sizeof(uint) - count));
+		}
+
+		public override int GetHashCode ()
+		{
+			return hash;
+		}
+		private static int hashCode<A>(ArraySlice_t<A> data){
+			//TODO: This breaks on a 0mer.  Must make those illegal.
+
+			int hash = data[0].GetHashCode();
+			uint s = data.StartIndex + 1;
+			uint e = data.StartIndex + data.Count;
+			for(uint i = s; i < e; i++){
+				//Console.WriteLine ("s: " + s + ", i: " + i + ", e: " + e);
+				hash = ((int)RotateLeft((uint)hash, 1)) ^ data.Array[i].GetHashCode();
+			}
+
+			return hash;
+
+			//return (int)this.Aggregate((uint)0, (sum, val) => RotateLeft(sum, 1) ^ (uint)val.GetHashCode () );
+		}
+
+		public override bool Equals (Object o)
+		{
+			if (o is Kmer<A>) {
+				Kmer<A> otherKmer = (Kmer<A>) o;
+				if(otherKmer.Count == this.Count){
 					return this.Zip (otherKmer, (a, b) => a.Equals (b)).Conjunction (); //TODO: Is this the right equality operator?  Nulls?
 				}
 			}

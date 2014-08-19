@@ -46,7 +46,6 @@
     <Compile Include="DiscreteEventSeries.cs" />
     <Compile Include="Whetstone\TupleStruct.cs" />
     <Compile Include="Whetstone\FunctionalList.cs" />
-    <Compile Include="MultisetKmer.cs" />
     <Compile Include="Genetic\Optimizer.cs" />
     <Compile Include="Whetstone\DataStructureExtensions.cs" />
     <Compile Include="MachineLearning\EventSeries\EventSeriesRegression\IEventSeriesScalarRegressor.cs" />
@@ -76,6 +75,7 @@
     <Compile Include="MachineLearning\Auxilliary\Visualization\LatexExtensions.cs" />
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\DateValueFeatureSynthesizer.cs" />
     <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\ZScoreNormalizerClassifierWrapper.cs" />
+    <Compile Include="MultisetHashedKmer.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

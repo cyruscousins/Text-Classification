@@ -74,9 +74,12 @@ namespace TextCharacteristicLearner
 		public static void TestLatex ()
 		{
 
-			bool test = true;
+			bool test = false;
+			bool shorten = true;
+			bool costarica = true;
+			bool cuba = true;
 
-			DiscreteSeriesDatabase<string> allData = LoadRegionsDatabase (test, true);
+			DiscreteSeriesDatabase<string> allData = LoadRegionsDatabase (test, shorten, costarica, cuba);
 
 			/*
 			IFeatureSynthesizer<string> testSynth = new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, true);
@@ -104,7 +107,7 @@ namespace TextCharacteristicLearner
 			//IEventSeriesProbabalisticClassifier<string> textClassifier // = TextClassifierFactory.TextClassifier ("region", new[]{"region", "type"});
 
 			//string documentTitle, string author, int width, int height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify
-			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.RegionsPerceptronTestClassifiers();
+			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.RegionsTestClassifiers().ToArray ();
 			IFeatureSynthesizer<string> synthesizer = new CompoundFeatureSynthesizer<string>(
 				"region",
 				new IFeatureSynthesizer<string>[]{
@@ -114,6 +117,10 @@ namespace TextCharacteristicLearner
 					new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 3, 50, 2.0, false)
 				}
 			);
+
+			if(test){
+				classifiers = classifiers.Take (2);
+			}
 
 			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers, "Spanish Language", allData, "region", test ? 1 : 16, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
 
@@ -263,20 +270,19 @@ namespace TextCharacteristicLearner
 
 		}
 
-		public static DiscreteSeriesDatabase<string> LoadRegionsDatabase (bool test = false, bool shorten = false)
+		public static DiscreteSeriesDatabase<string> LoadRegionsDatabase (bool test = false, bool shorten = false, bool costarica = true, bool cuba = true)
 		{
 			//Load training data and create classifier.
 
 			string directory = "../../res/regiones/";
 
-			string[] regions = "españa argentina méxico colombia costarica".Split (' ');
+			string[] regions = "españa argentina méxico colombia".Split (' ');
 
 			string file = "";
 
-			bool cuba = true;
-
-			if(test) cuba = false;
-
+			if(costarica){
+				regions = "costarica".Cons (regions).ToArray ();
+			}
 			if(cuba){
 				regions = "cuba".Cons (regions).ToArray ();
 			}
@@ -334,7 +340,7 @@ namespace TextCharacteristicLearner
 			d.LoadTextDatabase (directory, reader, 3);
 
 			if(shorten){
-				d = new DiscreteSeriesDatabase<string>(d.Select (item => new DiscreteEventSeries<string>(item.labels, item.data.Take (500).ToArray ())));
+				d = new DiscreteSeriesDatabase<string>(d.Select (item => new DiscreteEventSeries<string>(item.labels, item.data.Take (750).ToArray ())));
 			}
 
 			return d;

@@ -87,7 +87,11 @@ namespace TextCharacteristicLearner
 
 		public void finalizeModel(IEnumerable<KeyValuePair<A, double>> rawModel, uint rawCount){
 			double scale = 1 + Math.Log10 (rawCount);
-			rawModel.OrderByDescending (pair => pair.Value).Take ((int)featuresToUse).ForEach (a => characteristics.Add(a.Key, a.Value * scale)); //TODO replace with TakeTopNUnordered
+			foreach(KeyValuePair<A, double> pair in rawModel.TopUnordered((int)featuresToUse)){
+				characteristics.Add(pair.Key, pair.Value * scale);
+			}
+			//Old way:
+			//rawModel.OrderByDescending (pair => pair.Value).Take ((int)featuresToUse).ForEach (a => characteristics.Add(a.Key, a.Value * scale)); //TODO replace with TakeTopNUnordered
 			
 
 			//TODO scaling settings.

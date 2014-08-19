@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Whetstone
 {
-	public class ConsCell<Ty> : IEnumerable<Ty>{
+	public struct ConsCell<Ty> : IEnumerable<Ty>{
 		Ty item;
 		IEnumerable<Ty> next;
 
@@ -37,7 +37,7 @@ namespace Whetstone
 		}
 	}
 
-	public class AppendCell<Ty> : IEnumerable<Ty>{
+	public struct AppendCell<Ty> : IEnumerable<Ty>{
 		Ty item;
 		IEnumerable<Ty> first;
 
@@ -65,12 +65,10 @@ namespace Whetstone
 		}
 	}
 
-	//TODO is this the best way to do this.
-	public class EmptyList<Ty> : IEnumerable<Ty>{
+	public struct EmptyList<Ty> : IEnumerable<Ty>{
 
+		//TODO: What is the best way to represent a singleton?
 		public static EmptyList<Ty> NULL = new EmptyList<Ty>();
-
-		private EmptyList(){} //No public constructing allowed!
 
 		public IEnumerator<Ty> GetEnumerator(){
 			yield break;
@@ -79,6 +77,7 @@ namespace Whetstone
 		IEnumerator System.Collections.IEnumerable.GetEnumerator(){
 			return GetEnumerator();
 		}
+
 	}
 
 	public static class FunctionalListExtensions{

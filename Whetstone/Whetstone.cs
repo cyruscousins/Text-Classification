@@ -216,9 +216,15 @@ namespace Whetstone{
 			//TODO Implement this to use expected linear time Kth order statistics.
 		}
 		*/
+
 		public static IEnumerable<Ty> TopUnordered<Ty>(this IEnumerable<Ty> items, int k){
 			//return items.ToList().TopUnordered(k);
-			return items.Order().Take(k);
+			return items.OrderDescending().Take(k);
+		}
+		
+		public static IEnumerable<Ty> TopUnordered<Ty>(this IEnumerable<Ty> items, Func<Ty, double> f, int k){
+			//return items.ToList().TopUnordered(k);
+			return items.OrderByDescending(f).Take(k);
 		}
 
 		//TODO percentiles.
