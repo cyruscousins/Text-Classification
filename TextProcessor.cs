@@ -16,8 +16,8 @@ namespace TextCharacteristicLearner
 		{
 			string normalized = input.ToLower ();
 
-			//string processed = Regex.Replace (normalized, @"\s*([\[\](),.;:¡!¿?""“”«»/\\-])\s*", " $1 ");
-			string processed = Regex.Replace (normalized, @"\s*([\[\](),.;:¡!¿?""“”«»/\\_–-])\s*", " ");
+			string processed = Regex.Replace (normalized, @"\s*([\[\](),.;:¡!¿?""“”«»/\\-])\s*", " $1 ");
+			//string processed = Regex.Replace (normalized, @"\s*([\[\](),.;:¡!¿?""“”«»/\\_–-])\s*", " ");
 
 			IEnumerable<string> words = Regex.Split(processed, @"\s+");
 

@@ -37,7 +37,7 @@ namespace TextCharacteristicLearner
 			return new[]{
 				item.data.Length,
 				item.data.Select (word => word.Length).Sum () / (double)item.data.Length,
-				item.data.Where(word => stops.Contains(word)).Count() / (double)item.data.Length,
+				item.data.Length / (double)item.data.Where(word => stops.Contains(word)).Count(),
 			};
 		}
 	}

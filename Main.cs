@@ -115,7 +115,7 @@ namespace TextCharacteristicLearner
 				}
 			);
 
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers, "Spanish Language", allData, "region", test ? 1 : 16, synthesizer: synthesizer);
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers, "Spanish Language", allData, "region", test ? 1 : 16, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
 
 			/*
 			if (classifier is SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>) {
@@ -361,7 +361,7 @@ namespace TextCharacteristicLearner
 
 
 		public static void TestBrokenNormalizer(){
-			ZScoreNormalizer normalizer = new ZScoreNormalizer(new NullProbabalisticClassifier());
+			ZScoreNormalizerClassifierWrapper normalizer = new ZScoreNormalizerClassifierWrapper(new NullProbabalisticClassifier());
 
 			double[][] data = new double[][]{
 				new double[] {-1, 100, 100, 0},

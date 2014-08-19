@@ -67,7 +67,7 @@ namespace TextCharacteristicLearner
 			}
 
 			//Accuracy analysis:
-			Tuple<string, ClassifierAccuracyAnalysis<Ty>>[] analyses = classifiers.AsParallel ().Select (classifier => new Tuple<string,ClassifierAccuracyAnalysis<Ty>> (classifier.Item1, new ClassifierAccuracyAnalysis<Ty> (classifier.Item2, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ())).OrderBy (tup => tup.Item2.overallAccuracy).ToArray ();
+			Tuple<string, ClassifierAccuracyAnalysis<Ty>>[] analyses = classifiers.AsParallel ().Select (classifier => new Tuple<string,ClassifierAccuracyAnalysis<Ty>> (classifier.Item1, new ClassifierAccuracyAnalysis<Ty> (classifier.Item2, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ())).OrderByDescending (tup => tup.Item2.overallAccuracy).ToArray ();
 
 			//Shared confusion matrix calculation:
 			int classifierCount = classifiers.Count ();
@@ -123,7 +123,7 @@ namespace TextCharacteristicLearner
 				new[]{
 					new Tuple<string, double>( @"\textcolor[gray]{0.2}{E$[$Random Selection$]$}", analyses[0].Item2.expectedAccuracyRandom),
 					new Tuple<string, double>( @"\textcolor[gray]{0.2}{Top Class Selection}", analyses[0].Item2.topClassSelectionAccuracy)
-			}.Concat (analyses.Zip (classifierColorers, (analysis, colorer) => new Tuple<string, double>(@"\hyperref[sec:classification " + analysis.Item1 + "]{" + colorer(analysis.Item1) + "}" , analysis.Item2.overallAccuracy))).Select ((tup, index) => new[]{tup.Item1, (index + 1).ToString (), LatexExtensions.colorPercent(tup.Item2)})
+				}.Concat (analyses.Zip (classifierColorers, (analysis, colorer) => new Tuple<string, double>(@"\hyperref[sec:classification " + analysis.Item1 + "]{" + colorer(analysis.Item1) + "}" , analysis.Item2.overallAccuracy))).OrderByDescending (tup => tup.Item2).Select ((tup, index) => new[]{tup.Item1, (index + 1).ToString (), LatexExtensions.colorPercent(tup.Item2)})
 			));
 
 
@@ -329,7 +329,7 @@ namespace TextCharacteristicLearner
 				foreach (DiscreteEventSeries<Ty> item in dbInstances) {
 					result.AppendLine ("\\item " + item.labels ["filename"] + " (" + englishCountOfString (objName, item.data.Length) + ")" 
 						+ " $\\in$ " + foldToEnglishList (item.labels.Keys.Where (key => key != "filename").Select (key => key + ":" + item.labels [key])) + ".  ``"
-						+ seriesToSafeString (item, firstN) + "''."
+						+ seriesToSafeString (item, firstN) + "''." + @"\label{" + "enum:dsoverview:" + item.labels["filename"] + "}"
 					);
 				}
 				result.Append ("\\end{enumerate}\n");
@@ -346,17 +346,19 @@ namespace TextCharacteristicLearner
 			else{
 				//result.Append ("\\subsubsection{" + dbName + " categories}\n");
 				
-				int cols = 2; //TODO: Calculate this based on string lengths and page width
+				int cols = 3; //TODO: Calculate this based on string lengths and page width
 				if (cols > 1) result.AppendLine (@"\begin{multicols}{" + cols + "}");
 				result.Append ("\\begin{enumerate}[1.]\n");
 
 				foreach(string key in criteriaToEnumerate.OrderBy (item => item)){
 					result.AppendLine (@"\item " + key + "(" + dbInstances.Where (item => item.labels.ContainsKey (key)).Count() + " labeled entries):");
+					result.AppendLine (@"\label{" + "enum:criterion:" + key + "}");
 					result.AppendLine (@"\begin{enumerate}[I.]");
 					result.AppendLine (dbInstances.GroupBy (item => item.labels.GetWithDefault(key, "\\texttt{none}")) //Group by category
 					    .OrderBy (item => item.Key == "\\texttt{none}" ? 1 : 0).ThenBy (item => item.Key) //Order by name, with none last
 						.FoldToString (item => item.Key + " (" + item.Count() + " entries, " + englishCountOfString(objName, item.Select (subitem => subitem.data.Length).Sum()) + ")\n" //Count words per category;
-					   		+ item.FoldToString (subitem => subitem.labels["filename"] + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
+					   		+ @"\label{" + "enum:criterion:" + key + ":class:" + item.Key + "}"
+					    	+ item.FoldToString (subitem => @"\hyperref[" + "enum:dsoverview:" + subitem.labels["filename"] + "]{" + subitem.labels["filename"] + "}" + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
 					result.AppendLine (@"\end{enumerate}");
 				}
 				result.AppendLine (@"\end{enumerate}");
@@ -384,7 +386,7 @@ namespace TextCharacteristicLearner
 				"l |".Cons (Enumerable.Range (0, 6).Select (i => "c")), //Format
 				@"Criterion Name;Class Count;Min Class Size\tablefootnote{All class sizes refer to instance counts, not sum event counts.  See the following subsection for detailed reports on event counts by class.};Max Class Size;Mean Class Size;Stdev Class Size".Split (';'), //Header
 			    dataByCriterionAndClass.Select (row => new[]{
-					row.Item1, 
+					@"\hyperref[enum:criterion:" + row.Item1 + "]{" + row.Item1 + "}", 
 					row.Item2.Length.ToString (), 
 					row.Item2.Select (@class => @class.Item2.Length).Min ().ToString (), 
 					row.Item2.Select (@class => @class.Item2.Length).Max ().ToString (), 
@@ -415,7 +417,7 @@ namespace TextCharacteristicLearner
 					new[]{@"\textbf{Average Class}", meanInstanceCount.ToString (formatString),  (totalWordCount / (double)classCount).ToString (formatString), (totalWordCount / (double)totalInstanceCount).ToString (formatString)}.Cons ( //All row
 						Enumerable.Range (0, classCount).Select (classIndex => 
 					    	new[]{
-								criterionData.Item2[classIndex].Item1,
+								@"\hyperref[" + "enum:criterion:" + criterionData.Item1 + ":class:" + criterionData.Item2[classIndex].Item1 + "]{" + criterionData.Item2[classIndex].Item1 + "}",
 								instanceCounts[classIndex].ToString (),
 								wordCounts[classIndex].ToString (),
 								(wordCounts[classIndex] / (double) instanceCounts[classIndex]).ToString (formatString)
@@ -498,6 +500,7 @@ namespace TextCharacteristicLearner
 
 		//COLOR & TEXT
 
+		const string nanString = "--";
 		internal static string colorString(string s, double d){
 			if(d < 0) d = 0;
 			else if(d > 1) d = 1;
@@ -507,7 +510,7 @@ namespace TextCharacteristicLearner
 		}
 
 		internal static string colorDouble(double d){
-			if(Double.IsNaN(d)) return colorString ("-", d);
+			if(Double.IsNaN(d)) return colorString (nanString, d);
 			else if (Double.IsPositiveInfinity(d))  return @"$\infty$";
 			else if (Double.IsNegativeInfinity (d)) return @"$-\infty$";
 			return colorString(d.ToString (formatString), d);
@@ -520,6 +523,13 @@ namespace TextCharacteristicLearner
 				return "0.000";
 			}
 			*/
+			string valStr;
+			if(Double.IsNaN (val)){
+				valStr = nanString;
+			}
+			else{
+				valStr = val.ToString (formatString);
+			}
 			return colorString (val.ToString (formatString), val / outof);
 		}
 
@@ -591,18 +601,47 @@ namespace TextCharacteristicLearner
 
 		public static string FeatureAnalysisLatexString<Ty>(IFeatureSynthesizer<Ty> synth, DiscreteSeriesDatabase<Ty> data, string criterion){
 
-			//TODO: Normalize input.
-			synth.Train (data);
+			IEnumerable<DiscreteEventSeries<Ty>> labeledSeries = data.Where (item => item.labels.ContainsKey (criterion)).ToArray ();
+
+			//Train the synth on the input data.
+			synth.Train (data); //TODO: This training data is used to create the labeled instances.
 			string[] schema = synth.GetFeatureSchema();
-			string[] classes = data.Where (item => item.labels.ContainsKey (criterion)).Select (item => item.labels[criterion]).Distinct ().ToArray();
+			string[] classes = labeledSeries.Select (item => item.labels[criterion]).Distinct ().ToArray();
 
-			//TODO: Synthesize features from the data.  Use the resulting LabeledInstances to train a Perceptron for each class.  Sum of squares of perceptron weights for each class over number of classes is the usefulness of each term.
+			//Run the synth on all data, synthesize features.
+			Tuple<string, double[]>[] labeledInstances = labeledSeries.Select (item => new Tuple<string, double[]>(item.labels[criterion], synth.SynthesizeFeatures(item))).ToArray();
 
-			IGrouping<string, double[]>[] groupedLabeledInstances = data.GroupBy (item => item.labels[criterion], item => synth.SynthesizeFeatures(item)).ToArray ();
-			
+			//Calculate statistics over feature data.
+			//min, max, mean, stdev
+			double[][] featureStats = Enumerable.Range(0, schema.Length).Select(featureIndex =>
+				{
+					double[] vals = labeledInstances.Select(item => item.Item2[featureIndex]).ToArray();
+					double min = vals.Min();
+					double max = vals.Max();
+					double mean = vals.Average();
+					double stdev = vals.Stdev(mean);
+					//if(stdev == 0){
+					//	stdev = 1;
+					//}
+					return new[]
+					{
+						min, max, mean, stdev
+					};
+				}
+			).ToArray ();
+
+			//Normalize the labeled instances
+			foreach(Tuple<string, double[]> instance in labeledInstances){
+				for(int i = 0; i < schema.Length; i++){
+					if(featureStats[i][3] != 0) instance.Item2[i] = (instance.Item2[i] - featureStats[i][2]) / featureStats[i][3];
+				}
+			}
+
+			//Group features by label.
+			IGrouping<string, double[]>[] groupedLabeledInstances = labeledInstances.GroupBy (item => item.Item1, item => item.Item2).ToArray ();
 			Dictionary<string, int> classSizes = groupedLabeledInstances.ToDictionary (grp => grp.Key, grp => grp.Count ());
 
-			IEnumerable<Tuple<string, Perceptron>> perceptronByClass = classes.AsParallel ().Select (perceptronClass => 
+			Tuple<string, Perceptron>[] perceptronsByClass = classes.AsParallel ().Select (perceptronClass => 
 			    {
 				    TupleStruct<double[], int, double>[] thisPerceptronTrainingData = groupedLabeledInstances.SelectMany (grp =>
 						grp.Select (instance => new TupleStruct<double[], int, double>(instance, (grp.Key == perceptronClass) ? 1 : -1, classSizes[grp.Key]))).ToArray ();
@@ -611,30 +650,61 @@ namespace TextCharacteristicLearner
 					p.Train(thisPerceptronTrainingData);
 					return new Tuple<string, Perceptron>(perceptronClass, p);
 				}
-			);
+			).ToArray ();
 
-			double[] usefulnessScores = new double[schema.Length];
-			foreach(Tuple<string, Perceptron> p in perceptronByClass){
+			//Linear utility Scores
+			double[] linearClassificationFeatureUtilities = new double[schema.Length];
+			foreach(Tuple<string, Perceptron> p in perceptronsByClass){
 				for(int i = 0; i < schema.Length; i++){
-					usefulnessScores[i] += p.Item2.weights[i] * p.Item2.weights[i];
+					linearClassificationFeatureUtilities[i] += p.Item2.weights[i] * p.Item2.weights[i];
 				}
 			}
 
 			for(int i = 0; i < schema.Length; i++){
-				usefulnessScores[i] = (usefulnessScores[i] / classes.Length);
+				linearClassificationFeatureUtilities[i] = (linearClassificationFeatureUtilities[i] / classes.Length);
 			}
-			
-			double maxUsefulnessScore = usefulnessScores.Max ();
+			//Max linear utility score.
+			double maxLinearClassificationFeatureUtility = linearClassificationFeatureUtilities.Max ();
+
+			//Top perceptron weight.
+			double[] topPerceptronWeights = Enumerable.Range (0, schema.Length).Select (weightIndex => perceptronsByClass.Select(p => Math.Abs (p.Item2.weights[weightIndex])).Max ()).ToArray ();
+			double topTopPerceptronWeight = topPerceptronWeights.Max ();
+
+			Tuple<string, double, double>[] featureAnalysisResults = new Tuple<string, double, double>[schema.Length];
+			for(int i = 0; i < schema.Length; i++){
+				featureAnalysisResults[i] = new Tuple<string, double, double>(schema[i], linearClassificationFeatureUtilities[i], topPerceptronWeights[i]);
+			}
+
+			/*
+			double[] featureMins = Enumerable.Range (0, schema.Length).Select (data.Select ()).ToArray();
+			double[] featureMaxes;
+			double[] featureMeans;
+			double[] featureStdevs;
+			*/
 
 			StringBuilder result = new StringBuilder();
 
+			result.AppendLine (@"\subsection{Feature overview}");
+			result.AppendLine (latexLongTableString(
+				"l;c;c;c;c".Split (';'),
+				"Feature Name;Min;Max;Mean;Stdev".Split (';'),
+				Enumerable.Range(0, schema.Length).Select(featureIndex => 
+			        schema[featureIndex].Cons(featureStats[featureIndex].Select(item => Double.IsNaN (item) ? colorDouble (Double.NaN) : item.ToString ("G4"))) 
+				)
+			));
+
+			//TODO: Matrix of features by classes?
+
 			result.AppendLine (@"\subsection{Linear classification feature utility.}");
-			result.AppendLine ("This section evaluates the utility of features for use in a linear classifier.  This is accomplished by training a linear classifier (perceptron) to recognize each class individually.");
+			result.AppendLine ("This section evaluates the utility of features for use in a linear classifier.  This is accomplished by training a linear classifier (perceptron) to recognize each class individually.  All trainging is performed on normalized training data.");
 			result.AppendLine ();
 			result.AppendLine (@"Let the i\textsuperscript{th} such perceptron's weight vector be labeled $P_i$.  Feature $f$'s linear feature utility is defined as");
-			result.AppendLine (@"$$\sqrt{\frac{\sum_{i = 0}^{|\text{classes}|} (\frac{P_{i_f}}{|P_i|}) ^ 2}{|\text{classes}|}}$$");  //TODO: This normalization might not be complete?  I think this way, one feature per class can have score 1
-			result.AppendLine ();
-
+			result.AppendLine (@"$$\sqrt{\frac{\sum_{i = 0}^{|\text{classes}|} (\frac{P_{i_f}}{||P_i||}) ^ 2}{|\text{classes}|}}$$");  //TODO: This normalization might not be complete?  I think this way, one feature per class can have score 1
+			result.AppendLine ("Linear classification feature utility is useful for identifying features that are generally useful.  Many features are only useful for detection of specific classes; such features generally have low linear classification feature utility, and are better identified by determining how useful a feature is in the class where it is maximally useful.");
+			result.AppendLine ("The concept of maximal subset linear classification feature utility captures this concept, and is defined as the like so:");
+			result.AppendLine (@"$$\max(\{\text{Linear Classification Feature Utility}(x): x \in \{\mathcal{P}(\text{classes})\}\} \setminus \emptyset )$$");
+			//as the absolute value of the maximum weight of ")
+			result.AppendLine (@"The above definition represents a powerful concept, as it captures the features linear classification feature utility over the subset of classes for which the feature is most useful.  Although of combinatorial complexity when computed naïvely, it can be shown that the above definition is equivalent, for each f, to $$\max(\{\frac{|P_{i_f}}{||P_i||}|: i = \{1, \hdots, |\text{classes}|\}\})$$.");
 			/*
 			//Horizontal array
 			result.AppendLine (latexTabularString (
@@ -649,20 +719,23 @@ namespace TextCharacteristicLearner
 			//Vertical array
 
 			int colsToUse = 4;
+			colsToUse = 1; //Seems to cause issues.
 
 
-			//TODO: DOn't do this.
+			//TODO: Don't do this.
 			string temp = formatString;
-			formatString = "G";
+			formatString = "G3";
 			if(colsToUse > 1) result.AppendLine (@"\begin{multicols}{" + colsToUse + "}");
 			result.AppendLine (latexLongTableString (
-				"l|;c".Split (';'),
-				"Feature Name;Utility".Split (';'),
-				schema.Zip (usefulnessScores).OrderByDescending(item => item.Item2).Select (item => new[]{item.Item1, colorDouble(item.Item2, maxUsefulnessScore)})));
+				"l|;p{1.5in};p{1.5in}".Split (';'),
+				"Feature Name;Linear Classification Feature Utility;Maximal Subset Linear Classification Feature Utility".Split (';'),
+				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{item.Item1, colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
 			if(colsToUse > 1) result.AppendLine (@"\end{multicols}");
 
 			//Bad!
 			formatString = temp;
+
+			//TODO: Solo quality and "drop cost"
 
 			return result.ToString ();
 

@@ -60,7 +60,7 @@ namespace TextCharacteristicLearner
 			IProbabalisticClassifier classifier = new EnsembleProbabalisticClassifier(
 				new IProbabalisticClassifier[]{
 					new PerceptronCollection(4.0),
-					new ZScoreNormalizer(new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA))
+					new ZScoreNormalizerClassifierWrapper(new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA))
 				}
 			);
 
@@ -204,7 +204,7 @@ namespace TextCharacteristicLearner
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
 					),
-					new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES))
+					new ZScoreNormalizerClassifierWrapper(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES))
 				);
 
 			IEventSeriesProbabalisticClassifier<string> normalizedKnnBasedClassifier2 = 
@@ -219,7 +219,7 @@ namespace TextCharacteristicLearner
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
 					),
-					new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA))
+					new ZScoreNormalizerClassifierWrapper(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA))
 				);
 
 			IEventSeriesProbabalisticClassifier<string> normalizedKnnBasedClassifier3 = 
@@ -234,7 +234,7 @@ namespace TextCharacteristicLearner
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
 					),
-					new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES))
+					new ZScoreNormalizerClassifierWrapper(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES))
 				);
 
 			IEventSeriesProbabalisticClassifier<string> normalizedKnnBasedClassifier4 = 
@@ -249,7 +249,7 @@ namespace TextCharacteristicLearner
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
 					),
-					new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA))
+					new ZScoreNormalizerClassifierWrapper(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA))
 				);
 
 

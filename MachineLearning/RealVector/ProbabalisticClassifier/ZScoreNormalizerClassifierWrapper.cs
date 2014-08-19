@@ -7,14 +7,14 @@ using Whetstone;
 namespace TextCharacteristicLearner
 {
 	//While certainly not a classifier on its own, the ZScoreNormalizer serves as an adapter, being connected immediately to a classifier, and thus fulfils the contracts.
-	public class ZScoreNormalizer : IProbabalisticClassifier
+	public class ZScoreNormalizerClassifierWrapper : IProbabalisticClassifier
 	{
 		IProbabalisticClassifier classifier;
 
 		double[] stdevs;
 		double[] means;
 
-		public ZScoreNormalizer (IProbabalisticClassifier classifier)
+		public ZScoreNormalizerClassifierWrapper (IProbabalisticClassifier classifier)
 		{
 			this.classifier = classifier;
 		}

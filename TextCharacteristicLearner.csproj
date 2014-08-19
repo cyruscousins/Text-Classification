@@ -71,11 +71,11 @@
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\VarKmerFrequencyFeatureSynthesizerToRawFrequencies.cs" />
     <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\EnsembleProbabalisticClassifier.cs" />
     <Compile Include="LevenshteinDistance.cs" />
-    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\ZScoreNormalizer.cs" />
     <Compile Include="MachineLearning\Auxilliary\MachineLearningAttributes.cs" />
     <Compile Include="MachineLearning\Auxilliary\Analysis\AccuracyAnalysis.cs" />
     <Compile Include="MachineLearning\Auxilliary\Visualization\LatexExtensions.cs" />
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\DateValueFeatureSynthesizer.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\ZScoreNormalizerClassifierWrapper.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
