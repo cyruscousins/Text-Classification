@@ -9,20 +9,47 @@ namespace TextCharacteristicLearner
 {
 
 	//This class is equivalent to a RegressorFeatureSynthesizer loaded with VarKmerFrequencyRegressors, but it scales quite a bit better.
+	[AlgorithmNameAttribute("Variably Sized Characteristic Kmer Frequency Based Feature Synthesizer")]
 	public class VarKmerFrequencyFeatureSynthesizer<Ty> : IFeatureSynthesizer<Ty>
 	{
 		//PUBLIC DATA
+		[AlgorithmParameterAttribute("k", 0)]
 		public uint k;
-
+		
+		[AlgorithmParameterAttribute("minimum significance threshold", 1)]
 		public uint minKmerCount;
-
+		
+		[AlgorithmParameterAttribute("number of kmers to use", 2)]
 		public uint kmersToTake;
-
+		
+		[AlgorithmParameterAttribute("Laplacian smoothing amount", 3)]
 		public double smoothingAmt;
 
+		[AlgorithmParameterAttribute("discard uncategorized training instances", 4)]
 		public bool useUncategorizedForBaseline;
 
-		//...
+		[AlgorithmParameterAttribute("discard empty features", 5)]
+		public bool discardEmptyFeatures;
+
+		[AlgorithmTrainingAttribute("learned characteristic kmers", 1)]
+		public IEnumerable<string> LearnedKmers {
+			get{
+				//This function is very complicated, as it has to in a sense invert the manner in which data is stored.
+
+				List<TupleStruct<Kmer<Ty>, double>>[] vals = Enumerable.Range (0, classCount).Select (i => new List<TupleStruct<Kmer<Ty>, double>>()).ToArray ();
+
+				foreach(KeyValuePair<Kmer<Ty>, Dictionary<int, double>> kmerKvp in learnedCharacteristicKmers){
+					foreach(KeyValuePair<int, double> scores in kmerKvp.Value){
+						vals[scores.Key].Add (new TupleStruct<Kmer<Ty>, double>(kmerKvp.Key, scores.Value));
+					}
+				}
+				return GetFeatureSchema().Zip (vals, (className, classKmers) => 
+					//Class Name
+					className + ": " + 
+					//Class Kmers
+				   	classKmers.OrderByDescending (tup => Math.Abs (tup.Item2)).FoldToString (item => item.Item1 + ":" + item.Item2.ToString("F3"))
+			    );
+			}}
 
 		//Constructor
 		public VarKmerFrequencyFeatureSynthesizer(string criterion, uint k){
@@ -35,7 +62,7 @@ namespace TextCharacteristicLearner
 			useUncategorizedForBaseline = false;
 		}
 
-		public VarKmerFrequencyFeatureSynthesizer(string criterion, uint k, uint minKmerCount, uint kmersToTake, double smoothingAmt, bool useUncategorizedForBaseline){
+		public VarKmerFrequencyFeatureSynthesizer(string criterion, uint k, uint minKmerCount, uint kmersToTake, double smoothingAmt, bool useUncategorizedForBaseline, bool discardEmptyFeatures = false){
 			this.ClassificationCriterion = criterion;
 			this.k = k;
 
@@ -43,6 +70,7 @@ namespace TextCharacteristicLearner
 			this.kmersToTake = kmersToTake;
 			this.smoothingAmt = smoothingAmt;
 			this.useUncategorizedForBaseline = useUncategorizedForBaseline;
+			this.discardEmptyFeatures = discardEmptyFeatures;
 		}
 
 
@@ -157,6 +185,7 @@ namespace TextCharacteristicLearner
 
 			//TODO: Negative Kmers (note, may complicate sizing.  Will not work wittout a lot of data.)
 
+			//TODO: Discard empty features.
 		}
 
 		//Extract characteristic kmers (top n more common than baseline that occur at least q times).
@@ -211,27 +240,13 @@ namespace TextCharacteristicLearner
 			return vals;
 		}
 
-		//This function is very complicated, as it has to in a sense invert the manner in which data is stored.
 		public override string ToString(){
-			List<TupleStruct<Kmer<Ty>, double>>[] vals = Enumerable.Range (0, classCount).Select (i => new List<TupleStruct<Kmer<Ty>, double>>()).ToArray ();
-
-			foreach(KeyValuePair<Kmer<Ty>, Dictionary<int, double>> kmerKvp in learnedCharacteristicKmers){
-				foreach(KeyValuePair<int, double> scores in kmerKvp.Value){
-					vals[scores.Key].Add (new TupleStruct<Kmer<Ty>, double>(kmerKvp.Key, scores.Value));
-				}
-			}
-
 			//Classifier Name
 			return "{Variable Kmer Frequency to Classes Analyzer on \"" + ClassificationCriterion + "\" (" +
 				//Classifier Variables
 				"k;Min Kmer Count;Kmers Per Class;Smoothing Amount".Split (';').Zip (new[]{k, minKmerCount, kmersToTake, smoothingAmt}, (name, val) => name + " = " + val.ToString ("0.###")).FoldToString ("", "", ", ") + ", Use unclassified data in baseline = " + useUncategorizedForBaseline + "):" + "\n" +
 				//Classes
-				GetFeatureSchema().Zip (vals, (className, classKmers) => 
-					//Class Name
-					className + ": " + 
-					//Class Kmers
-				   	classKmers.OrderByDescending (tup => Math.Abs (tup.Item2)).FoldToString (item => item.Item1 + ":" + item.Item2.ToString("F3"))
-			    ).FoldToString("{", "}", ",\n");
+				LearnedKmers.FoldToString("{", "}", ",\n");
 		}
 
 	}

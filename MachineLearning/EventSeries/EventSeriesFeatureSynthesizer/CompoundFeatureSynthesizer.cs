@@ -6,11 +6,13 @@ using Whetstone;
 
 namespace TextCharacteristicLearner
 {
+	[AlgorithmNameAttribute("Compound Feature Synthesizer")]
 	public class CompoundFeatureSynthesizer<Ty> : IFeatureSynthesizer<Ty>
 	{
 		//A compound feature synthesizer holds other feature synthesizers and concatenates their results.
 		//Training can all be done on the same data safely.
 
+		[AlgorithmParameterAttribute("Feature Synthesizers", 0)]
 		IFeatureSynthesizer<Ty>[] synths;
 
 		//Data Accessors:

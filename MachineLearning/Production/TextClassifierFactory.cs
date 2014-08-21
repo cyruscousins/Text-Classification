@@ -130,36 +130,7 @@ namespace TextCharacteristicLearner
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
 					),
-					new PerceptronCollection(8.0)
-				);
-			IEventSeriesProbabalisticClassifier<string> perceptronBasedClassifierWithNegatives = 
-				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new CompoundFeatureSynthesizer<string>(
-						"region",
-						
-						new IFeatureSynthesizer<string>[]{
-							new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
-							new LatinLanguageFeatureSynthesizer("region"),
-					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
-					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
-						}
-					),
-					new PerceptronCollection(8.0, classificationMode: PerceptronClassificationMode.USE_NEGATIVES)
-				);
-
-			IEventSeriesProbabalisticClassifier<string> perceptronBasedClassifierDoublePower = 
-				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new CompoundFeatureSynthesizer<string>(
-						"region",
-						
-						new IFeatureSynthesizer<string>[]{
-							new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
-							new LatinLanguageFeatureSynthesizer("region"),
-					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
-					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
-						}
-					),
-					new PerceptronCollection(16.0)
+					new PerceptronCollection(16.0, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.USE_NEGATIVES)
 				);
 			
 			IEventSeriesProbabalisticClassifier<string> evenKnnBasedClassifier = 
@@ -168,7 +139,7 @@ namespace TextCharacteristicLearner
 						"region",
 						
 						new IFeatureSynthesizer<string>[]{
-							new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
+							//new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
 							new LatinLanguageFeatureSynthesizer("region"),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
@@ -183,7 +154,7 @@ namespace TextCharacteristicLearner
 						"region",
 						
 						new IFeatureSynthesizer<string>[]{
-							new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
+							//new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
 							new LatinLanguageFeatureSynthesizer("region"),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
@@ -198,7 +169,7 @@ namespace TextCharacteristicLearner
 						"region",
 						
 						new IFeatureSynthesizer<string>[]{
-							new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
+							//new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
 							new LatinLanguageFeatureSynthesizer("region"),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
@@ -213,7 +184,7 @@ namespace TextCharacteristicLearner
 						"region",
 						
 						new IFeatureSynthesizer<string>[]{
-							new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
+							//new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
 							new LatinLanguageFeatureSynthesizer("region"),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
@@ -229,7 +200,7 @@ namespace TextCharacteristicLearner
 						
 						new IFeatureSynthesizer<string>[]{
 							//new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
-							new LatinLanguageFeatureSynthesizer("region"),
+							//new LatinLanguageFeatureSynthesizer("region"),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
@@ -244,7 +215,7 @@ namespace TextCharacteristicLearner
 						
 						new IFeatureSynthesizer<string>[]{
 							//new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>("region", 2, 2, 8, .1, false),
-							new LatinLanguageFeatureSynthesizer("region"),
+							//new LatinLanguageFeatureSynthesizer("region"),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, false),
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
@@ -283,8 +254,6 @@ namespace TextCharacteristicLearner
 					"region feature synthesizer based classifier",
 					"double power region feature based classifier",
 					"perceptron based classifier",
-					"perceptron based classifier with negatives",
-					"double power perceptron based classifier",
 					"even distribution KNN based classifier",
 					"all data KNN based classifier",
 					"normalized KNN based classifier even",
@@ -297,8 +266,6 @@ namespace TextCharacteristicLearner
 					synthesizerClassifier, 
 					doublePowerSynthesizerClassifier, 
 					perceptronBasedClassifier, 
-					perceptronBasedClassifierWithNegatives, 
-					perceptronBasedClassifierDoublePower, 
 					evenKnnBasedClassifier, 
 					allKnnBasedClassifier, 
 					normalizedKnnBasedClassifier, 

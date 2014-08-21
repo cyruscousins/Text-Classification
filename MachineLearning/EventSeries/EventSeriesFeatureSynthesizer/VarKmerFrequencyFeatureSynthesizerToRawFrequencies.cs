@@ -9,17 +9,23 @@ namespace TextCharacteristicLearner
 {
 
 	//This class is equivalent to a RegressorFeatureSynthesizer loaded with VarKmerFrequencyRegressors, but it scales quite a bit better.
+	[AlgorithmNameAttribute("Variably Sized Kmer Frequency Feature Synthesizer")]
 	public class VarKmerFrequencyFeatureSynthesizerToRawFrequencies<Ty> : IFeatureSynthesizer<Ty>
 	{
 		//PUBLIC DATA
+		[AlgorithmParameterAttribute("k", 0)]
 		public uint k;
-
+		
+		[AlgorithmParameterAttribute("minimum significance threshold", 1)]
 		public uint minKmerCount;
-
+		
+		[AlgorithmParameterAttribute("number of kmers to use", 2)]
 		public uint kmersToTake;
-
+		
+		[AlgorithmParameterAttribute("Laplacian smoothing amount", 3)]
 		public double smoothingAmt;
 
+		[AlgorithmParameterAttribute("use uncategorized training instances", 4)]
 		public bool useUncategorizedForBaseline;
 
 		//...
@@ -163,4 +169,3 @@ namespace TextCharacteristicLearner
 
 	}
 }
-

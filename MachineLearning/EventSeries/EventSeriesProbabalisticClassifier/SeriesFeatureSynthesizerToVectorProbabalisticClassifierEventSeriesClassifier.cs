@@ -6,12 +6,16 @@ using System.Linq;
 
 namespace TextCharacteristicLearner
 {
+
 	//Sorry about the name.
 	//This class does exactly what one might expect.  As an event series classifier, its job is to produce probabalistic classifications for generic event series.
 	//It does this by running the series through a feature synthesizer to generate a feature vector, then running a proabalistic classifier on the feature vector.
+	[AlgorithmNameAttribute("Series Feature Synthesizer to Vector Probabalistic Classifier")]
 	public class SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<Ty> : IEventSeriesProbabalisticClassifier<Ty>
 	{
+		[AlgorithmParameterAttribute("Feature Synthesizer", 0)]
 		public IFeatureSynthesizer<Ty> synthesizer;
+		[AlgorithmParameterAttribute("Probabalistic Classifier", 1)]
 		public IProbabalisticClassifier classifier;
 
 		public SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier (IFeatureSynthesizer<Ty> synthesizer, IProbabalisticClassifier classifier)

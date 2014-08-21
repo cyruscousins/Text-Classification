@@ -2,8 +2,9 @@ using System;
 
 using System.Collections.Generic;
 
-using Whetstone;
 using System.Linq;
+
+using Whetstone;
 
 namespace TextCharacteristicLearner
 {

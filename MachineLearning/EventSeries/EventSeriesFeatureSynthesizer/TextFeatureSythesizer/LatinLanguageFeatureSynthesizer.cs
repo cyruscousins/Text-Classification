@@ -5,6 +5,7 @@ using System.Linq;
 
 namespace TextCharacteristicLearner
 {
+	[AlgorithmNameAttribute("Latin language feature synthesizer")]
 	public class LatinLanguageFeatureSynthesizer : IFeatureSynthesizer<string>
 	{
 		public LatinLanguageFeatureSynthesizer (string criterion)

@@ -74,7 +74,7 @@ namespace TextCharacteristicLearner
 		public static void TestLatex ()
 		{
 
-			bool test = false;
+			bool test = true;
 			bool shorten = true;
 			bool costarica = true;
 			bool cuba = true;
@@ -118,11 +118,13 @@ namespace TextCharacteristicLearner
 				}
 			);
 
+
 			if(test){
 				classifiers = classifiers.Take (2);
 			}
 
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers, "Spanish Language", allData, "region", test ? 1 : 16, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
+
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers.ToArray (), "Spanish Language", allData, "region", test ? 1 : 16, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
 
 			/*
 			if (classifier is SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>) {
@@ -197,7 +199,7 @@ namespace TextCharacteristicLearner
 
 
 			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.NewsTestAdvancedClassifiers();
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers, "News", data, "author", 12, new[]{"author", "location", "date"});
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers.ToArray (), "News", data, "author", 12, new[]{"author", "location", "date"});
 		}
 
 

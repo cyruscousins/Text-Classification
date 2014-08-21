@@ -3,6 +3,8 @@ using System.Linq;
 
 namespace TextCharacteristicLearner
 {
+	//TODO: Deprecate this class?
+
 	public class DateValueFeatureSynthesizer : IFeatureSynthesizer<string>
 	{
 		public DateValueFeatureSynthesizer (string criterion)
@@ -16,7 +18,7 @@ namespace TextCharacteristicLearner
 		public bool NeedsTraining{get{return false;} }
 
 		public void Train(DiscreteSeriesDatabase<string> data){
-			throw new Exception("Cannot train a LatinLanguageFeatureSynthesizer.");
+			throw new Exception("Cannot train a DateValueFeatureSynthesizer.");
 		}
 
 		public string[] GetFeatureSchema(){

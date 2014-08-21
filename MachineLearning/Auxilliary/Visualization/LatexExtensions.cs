@@ -52,7 +52,7 @@ namespace TextCharacteristicLearner
 			return s => @"\textcolor[rgb]{" + colorStr + "}{" + s + "}";
 		}
 
-		public static void ProduceClassifierComparisonWriteup<Ty> (string documentTitle, string author, double width, double height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds, string[] analysisCriteria = null, IFeatureSynthesizer<Ty> synthesizer = null)
+		public static void ProduceClassifierComparisonWriteup<Ty> (string documentTitle, string author, double width, double height, string outFile, Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>[] classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds, string[] analysisCriteria = null, IFeatureSynthesizer<Ty> synthesizer = null)
 		{
 			dataset = dataset.FilterForCriterion (criterionByWhichToClassify);
 
@@ -60,11 +60,6 @@ namespace TextCharacteristicLearner
 
 			doc.Append ("\\section{Input Data Overview}\n\n");
 			doc.Append (dataset.DatabaseLatexString (datasetTitle + " Database Analysis", (analysisCriteria == null) ? new[]{criterionByWhichToClassify} : analysisCriteria, (int)width - 2));
-
-			//Train all the classifiers
-			foreach (Tuple<string, IEventSeriesProbabalisticClassifier<Ty>> classifier in classifiers) {
-				classifier.Item2.Train (dataset);
-			}
 
 			//Accuracy analysis:
 			Tuple<string, ClassifierAccuracyAnalysis<Ty>>[] analyses = classifiers.AsParallel ().Select (classifier => new Tuple<string,ClassifierAccuracyAnalysis<Ty>> (classifier.Item1, new ClassifierAccuracyAnalysis<Ty> (classifier.Item2, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ())).OrderByDescending (tup => tup.Item2.overallAccuracy).ToArray ();
@@ -167,7 +162,7 @@ namespace TextCharacteristicLearner
 
 				doc.Append (@"\section{Feature Synthesizer and Classifier Overview for " + classifierAnalysis.Item1 + "}\n\n");
 				doc.Append (@"\label{sec:classifier " + classifierAnalysis.Item1 + "}");
-				doc.Append (classifierAnalysis.Item2.classifier.ClassifierLatexString(LatexExtensions.englishCapitolizeFirst(criterionByWhichToClassify) + "Classifier", (int)((width - 1.6) * 13.5)));
+				doc.Append (classifierAnalysis.Item2.classifier.ClassifierLatexString(LatexExtensions.englishCapitolizeFirst(criterionByWhichToClassify) + " Classifier", (int)((width - 1.6) * 13.5)));
 
 				//Console.WriteLine ("Generated Classifier Overview.");
 
@@ -470,7 +465,7 @@ namespace TextCharacteristicLearner
 			return result.ToString ();
 		}
 
-		public static string ClassifierLatexString<Ty>(this IEventSeriesProbabalisticClassifier<Ty> featureSynth, string classifierName, int textWrap){
+		public static string ClassifierLatexString<Ty>(this IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName, int lineCols){
 			StringBuilder result = new StringBuilder();
 
 			result.Append ("\\subsection{" + classifierName + "}\n");
@@ -479,15 +474,27 @@ namespace TextCharacteristicLearner
 			result.AppendLine ("Generally speaking, the type of the classifier and all parameters are given in the first line, and a complete report of all information learned from training data follows.\\footnote{On a technical note, the reason for the clear difference in representation quality between this section and the remainder of the report is that this section is generated from a string produced by implemetations of the \\texttt{IEventSeriesProbabalisticClassifier<string>} interface, whereas the remaining sections involving the classifier use only the public contract to obtain their data.}");
 
 
-			string fsynthstr = WordWrap(featureSynth.ToString (), textWrap);
+			string fsynthstr = WordWrap(classifier.ToString (), lineCols);
 
 			//TODO: Escape?
 			//Package inputenc Error: Unicode char \u8:² not set up for use with LaTeX.
 
 			//TODO: Make this less bad.
+
 			result.Append ("\\begin{verbatim}\n");
 			result.Append (fsynthstr);
 			result.Append ("\n\\end{verbatim}\n");
+
+
+			/*
+			result.Append("MODERN TEXT OUTPUT:\n");
+			result.Append ("\\begin{verbatim}\n");
+			result.Append (WordWrap (AlgorithmReflectionExtensions.UntrainedModelString(classifier), lineCols));
+			result.Append ("\n\\end{verbatim}\n");
+			*/
+			//result.AppendLine ("LATEX OUTPUT:\n");
+			result.AppendLine (AlgorithmReflectionExtensions.UntrainedModelLatexString(classifier));
+
 
 			//TODO: Accuracy profiling.
 
