@@ -17,6 +17,7 @@ namespace TextCharacteristicLearner
 	{
 		//INPUT:
 		public IEventSeriesProbabalisticClassifier<Ty> classifier;
+		public string classifierName;
 		public DiscreteSeriesDatabase<Ty> labeledData;
 		public string criterionByWhichToClassify;
 		public double trainSplitFrac;
@@ -72,9 +73,10 @@ namespace TextCharacteristicLearner
 		int maxDisplayClassCount = 50;
 
 
-		public ClassifierAccuracyAnalysis (IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
+		public ClassifierAccuracyAnalysis (IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName,DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
 		{
 			this.classifier = classifier;
+			this.classifierName = classifierName;
 			this.labeledData = labeledData;
 			this.criterionByWhichToClassify = criterionByWhichToClassify;
 			this.trainSplitFrac = trainSplitFrac;
@@ -220,7 +222,7 @@ namespace TextCharacteristicLearner
 			return new Tuple<string, string, string, double[], double> (data.labels[nameCriterion], data.labels[criterionByWhichToClassify], predictedClass, trueScores, maxScore);
 		}
 
-		public string latexAccuracyAnalysisString(){
+		public string latexAccuracyAnalysisString(string subsection = @"\subsection", string subsubsection = @"\subsubsection"){
 
 			double instancesClassifiedDouble = classificationInstances.Count;
 			double accuracyImprovement = overallAccuracy - expectedAccuracyRandom;
@@ -229,7 +231,8 @@ namespace TextCharacteristicLearner
 
 			//RAW RESULTS
 
-			result.AppendLine (@"\subsection{Classifier Accuracy Estimation Report}");
+			result.AppendLine (subsection + "{Classifier Accuracy Estimation Report}");
+			result.AppendLine (@"\label{sec:classifier:accuracy " + classifierName + "}");
 			result.AppendLine ("From a set of " + labeledData.data.Count + " labeled instances, classifiers were build with a training data to test data ratio of " + trainSplitFrac.ToString(LatexExtensions.formatString) + " (" + ((int) (trainSplitFrac * labeledData.data.Count())) + " training, " + (labeledData.data.Count - ((int) (trainSplitFrac * labeledData.data.Count()))) + " test instances).");
 			result.AppendLine ("The process was repeated " + iterations + " times, for a total of " + classificationInstances.Count + " classifications.");
 			result.AppendLine ("In these trials, the overall accuracy rate was found to be " + overallAccuracy.ToString (LatexExtensions.formatString) + ", which is " + Math.Abs (accuracyImprovement).ToString (LatexExtensions.formatString) + " " + ((accuracyImprovement > 0) ? "better" : "worse") + " than random choice (" + expectedAccuracyRandom.ToString (LatexExtensions.formatString) + ").");
@@ -287,9 +290,9 @@ namespace TextCharacteristicLearner
 
 			//ACCURACY PROFILE
 
-			result.AppendLine (@"\subsection{True vs. Predicted Class Distributions (Classifier Accuracy)}");
+			result.AppendLine (subsubsection + "{True vs. Predicted Class Distributions (Classifier Accuracy)}");
 
-			result.AppendLine ("Although it is one of the most basic metrics for classifier accuracy, comparing the true and predicted class distribution is an excellent way to detect a classifier biased toward or against a particular class.");
+			result.AppendLine ("Although it is one of the most basic metrics for classifier accuracy, candycane.AppendLineing the true and predicted class distribution is an excellent way to detect a classifier biased toward or against a particular class.");
 			result.AppendLine ("Confusion matrices and other techniques become necessary when the bias becomes more subtle, as in the case where instances of one particular class are often confused for instances of another.");
 
 			
@@ -328,7 +331,7 @@ namespace TextCharacteristicLearner
 
 			//SCORE PROFILE
 			
-			result.AppendLine (@"\subsection{True vs. Predicted Class Distributions (Algorithm Score)}");
+			result.AppendLine (subsubsection + "{True vs. Predicted Class Distributions (Algorithm Score)}");
 
 			//TODO: Writeup for this.  ALgorthim weight score instead of accuracy.
 			
@@ -369,7 +372,7 @@ namespace TextCharacteristicLearner
 
 
 
-			result.AppendLine(@"\subsection{Accuracy Confusion Matrix}");
+			result.AppendLine(subsubsection + "{Accuracy Confusion Matrix}");
 			if(classCount > maxDisplayClassCount){
 				result.AppendLine (@"*\textbf{Omitted because classes exceed limit " + maxDisplayClassCount + "}.");
 			}
@@ -392,7 +395,7 @@ namespace TextCharacteristicLearner
 
 
 
-			result.AppendLine(@"\subsection{Algorithm Prediction Weight Score Confusion Matrix}" + "\n");
+			result.AppendLine(subsubsection + "{Algorithm Prediction Weight Score Confusion Matrix}" + "\n");
 			if(classCount > maxDisplayClassCount){
 				result.AppendLine (@"*\textbf{Omitted because classes exceed limit " + maxDisplayClassCount + "}.");
 			}
@@ -434,7 +437,7 @@ namespace TextCharacteristicLearner
 
 			//Confidence Accuracy Tradeoff
 
-			result.AppendLine (@"\subsection{Accuracy Analysis}" + "\n");
+			result.AppendLine (subsubsection + "{Accuracy Analysis}" + "\n");
 
 			result.AppendLine ("Here the collected data on the relationship between algorithm prediction strength value and accuracy are presented.");
 			result.AppendLine ("The value output by the algorithm for prediction strength is only guaranteed to be monotonic with respect to the strength of the classification, by consulting this table, the accuracy of the classifier for various prediction strengths can be interpreted.");
@@ -503,26 +506,26 @@ namespace TextCharacteristicLearner
 
 			//May be good to have a space filling charts of correct vs incorrect classifications by confidence.
 			
-			result.AppendLine (@"\subsection{Insights}");
+			result.AppendLine (subsubsection + "{Insights}");
 			result.AppendLine ("This subsection presents insights that can be gleaned from the above data.  It is particularly useful for large datasets, where it is difficult to interpret results presented in enormous matrices.");
 
-			result.AppendLine(@"\par\bigskip");
+			result.AppendLine (@"\par\bigskip");
 			result.AppendLine (@"\textbf{Classifier Skew}");
 			result.AppendLine (@"\begin{itemize}");
 			result.AppendLine (Enumerable.Range (0, classCount).Select(
 								i => new Tuple<string, double>(datasetSchema[i], (countColumnSums[i] - countRowSums[i]) / instancesClassifiedDouble)).Where (item => Math.Abs (item.Item2) > .02).OrderByDescending(item => Math.Abs (item.Item2)).Take(20).Select(
-									tup => "The classifier is " + LatexExtensions.quantificationAdverbPhrase(Math.Abs (Math.Pow(tup.Item2, .9))) + " skewed " + ((tup.Item2 > 0) ? "toward" : "against") + " class \"" + tup.Item1 + "\" by " + LatexExtensions.colorPercent(Math.Abs (tup.Item2)) + ".").FoldToString("\t\\item ", "", "\t\\item "));
+									tup => "The classifier is " + LatexExtensions.quantificationAdverbPhrase(Math.Pow(Math.Abs (tup.Item2), .65)) + " skewed " + ((tup.Item2 > 0) ? "toward" : "against") + " class \"" + tup.Item1 + "\" by " + LatexExtensions.colorPercent(Math.Abs (tup.Item2)) + ".").FoldToString("\t\\item ", "", "\t\\item "));
 			result.AppendLine (@"\end{itemize}");
 
-			result.AppendLine(@"\par\bigskip");
+			result.AppendLine (@"\par\bigskip");
 			result.AppendLine (@"\textbf{Interclass Confusion Bias Detection}");
 			result.AppendLine (@"\begin{itemize}");
 			result.AppendLine (Enumerable.Range (0, classCount).SelectMany(row => Enumerable.Range (0, classCount).Select (col => new Tuple<string, string, double>(datasetSchema[row], datasetSchema[col], confusionMatrixCounts[row, col] / (double) countRowSums[row]))).Where (tup => tup.Item1 != tup.Item2).Where(tup => tup.Item3 >= .02).OrderByDescending(tup => tup.Item3).Take(30) //Select the top n highest values not on the diagonal (greatest mistakes)
-									.Select(tup => "Instances of class \"" + tup.Item1 + "\" are " + LatexExtensions.frequencyQuantificationAdverbPhrase(tup.Item3) + " mistaken for those of class \"" + tup.Item2 + "\" (This occurs in " + LatexExtensions.colorPercent (tup.Item3) + " of test instances).").FoldToString ("\t\\item ", "", "\t\\item ")); 
+									.Select(tup => "Instances of class \"" + tup.Item1 + "\" are " + LatexExtensions.frequencyQuantificationAdverbPhrase(Math.Pow (tup.Item3, .8)) + " mistaken for those of class \"" + tup.Item2 + "\" (This occurs in " + LatexExtensions.colorPercent (tup.Item3) + " of test instances).").FoldToString ("\t\\item ", "", "\t\\item ")); 
 									//TODO, somehow ignore small classes being mistaken as larger ones, could be chance.  Better yet, add statistical significance of this bias.
 			result.AppendLine (@"\end{itemize}");
 
-			result.AppendLine(@"\par\bigskip");
+			result.AppendLine (@"\par\bigskip");
 
 			//TODO: Don't show for empties ^^^
 
@@ -533,7 +536,7 @@ namespace TextCharacteristicLearner
 				Tuple<string, double>[] poorClasses = Enumerable.Range (0, classCount).Select(i => new Tuple<string, double>(datasetSchema[i], classCountAccuracies[i])).Where (item => Math.Abs (item.Item2) < poorCutoff).OrderBy(item => Math.Abs (item.Item2)).ToArray();
 
 				if(poorClasses.Length > 0){
-					result.AppendLine (@"\subsubsection{Poor Class Performance Detection}");
+					//result.AppendLine (@"\subsubsection{Poor Class Performance Detection}");
 					result.AppendLine ("Instances of " + LatexExtensions.englishCountOfString("class", poorClasses.Length) + " were classified poorly.\n");
 					result.AppendLine (@"\begin{itemize}");
 					result.AppendLine (poorClasses.Take(poorClassesMax).Select(

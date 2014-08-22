@@ -79,6 +79,10 @@ namespace TextCharacteristicLearner
 			bool costarica = true;
 			bool cuba = true;
 
+			if(test){
+				costarica = cuba = false;
+			}
+
 			DiscreteSeriesDatabase<string> allData = LoadRegionsDatabase (test, shorten, costarica, cuba);
 
 			/*
@@ -118,11 +122,11 @@ namespace TextCharacteristicLearner
 				}
 			);
 
-			/*
+
 			if(test){
 				classifiers = classifiers.Take (2);
 			}
-			*/
+
 
 
 			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers.ToArray (), "Spanish Language", allData, "region", test ? 1 : 16, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
@@ -188,7 +192,7 @@ namespace TextCharacteristicLearner
 			);
 
 			//string documentTitle, string author, int width, int height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteEventSeries<Ty> dataset, string datasetTitle, string criterionByWhichToClassify
-			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/news.tex", classifier, data, "News", "author");
+			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/news.tex", classifier, "characteristic kmer classifier", data, "News", "author");
 
 		}
 		public static void runNewsClassifierDerivation ()

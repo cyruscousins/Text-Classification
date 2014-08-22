@@ -42,15 +42,7 @@ namespace TextCharacteristicLearner
 	}
 	
 
-	public static class WriteupGenerator{	
-		public static Random rand = new Random();
-		public static string applyRandomLatexColor(string s){
-			return getRandomColorer()(s);
-		}
-		public static Func<string, string> getRandomColorer(double max = .8){
-			string colorStr = Enumerable.Range (0, 3).Select (item => (rand.NextDouble () * max).ToString ("F3")).FoldToString ("", "", ",");
-			return s => @"\textcolor[rgb]{" + colorStr + "}{" + s + "}";
-		}
+	public static class WriteupGenerator{
 
 		public static void ProduceClassifierComparisonWriteup<Ty> (string documentTitle, string author, double width, double height, string outFile, Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>[] classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds, string[] analysisCriteria = null, IFeatureSynthesizer<Ty> synthesizer = null)
 		{
@@ -58,120 +50,32 @@ namespace TextCharacteristicLearner
 
 			LatexDocument doc = new LatexDocument (documentTitle, author, .8, width, height);
 
-			doc.Append ("\\section{Input Data Overview}\n\n");
+			doc.Append (@"\part{Problem Analysis}");
+
+			doc.Append (@"\section{Dataset Overview}");
 			doc.Append (dataset.DatabaseLatexString (datasetTitle + " Database Analysis", (analysisCriteria == null) ? new[]{criterionByWhichToClassify} : analysisCriteria, (int)width - 2));
 
 			//Accuracy analysis:
-			Tuple<string, ClassifierAccuracyAnalysis<Ty>>[] analyses = classifiers.AsParallel ().Select (classifier => new Tuple<string,ClassifierAccuracyAnalysis<Ty>> (classifier.Item1, new ClassifierAccuracyAnalysis<Ty> (classifier.Item2, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ())).OrderByDescending (tup => tup.Item2.overallAccuracy).ToArray ();
-
-			//Shared confusion matrix calculation:
-			int classifierCount = classifiers.Count ();
-			int classCount = analyses.First ().Item2.datasetSchema.Length;
-
-			double[,] sharedConfusionMatrix = new double[classifierCount, classifierCount];
-			for (int i = 0; i < classifierCount; i++) {
-				sharedConfusionMatrix [i, i] = Double.NaN;
-				for (int j = i + 1; j < classifierCount; j++) {
-
-					double sharedConfusion = 0;
-					//Sum the shared confusion of confusion matrices i and j
-
-
-					for (int ii = 0; ii < classCount; ii++) {
-						for (int jj = 0; jj < classCount; jj++) {
-							if (ii == jj)
-								continue;
-							double val = analyses [i].Item2.confusionMatrixScores [ii, jj] * analyses [j].Item2.confusionMatrixScores [ii, jj];
-							if (val > 0)
-								sharedConfusion += val.Sqrt ();
-						}
-					}
-					sharedConfusionMatrix [i, j] = sharedConfusionMatrix [j, i] = sharedConfusion;
-				}
-			}
-
-			//Generate colors for classifiers
-			Func<string, string>[] classifierColorers = Enumerable.Range (0, classifierCount).Select ((a) => getRandomColorer (.8)).ToArray ();
-
-
-			Console.WriteLine ("Generated Database Overview.");
+			ClassifierAccuracyAnalysis<Ty>[] analyses = classifiers.AsParallel ().Select (classifier => new ClassifierAccuracyAnalysis<Ty> (classifier.Item2, classifier.Item1, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ()).OrderByDescending (analysis => analysis.overallAccuracy).ToArray ();
 
 			if (synthesizer != null) {
 				doc.Append (@"\section{Feature Analysis}");
 				doc.Append (LatexExtensions.FeatureAnalysisLatexString (synthesizer, dataset, criterionByWhichToClassify));
 			}
 
+			doc.Append (@"\part{Classifier Analysis}");
+
 			doc.Append (@"\section{Classifier Comparison}");
 
-			
-			doc.Append (@"\subsection{Classifier Comparison Overview}");
-
-			//Overview
-			doc.Append ("Over a set of " + analyses[0].Item2.labeledData.data.Count + " labeled instances, " + analyses.Length + " classifiers were compared.  In this experiment, a training data to test data ratio of " + analyses[0].Item2.trainSplitFrac.ToString(LatexExtensions.formatString) + " (" + ((int) (analyses[0].Item2.trainSplitFrac * analyses[0].Item2.labeledData.data.Count())) + " training, " + (analyses[0].Item2.labeledData.data.Count - ((int) (analyses[0].Item2.trainSplitFrac * analyses[0].Item2.labeledData.data.Count()))) + " test instances) was used.");
-			doc.Append ("The process was repeated " + LatexExtensions.englishCountOfString("time", analyses[0].Item2.iterations) + ", for a total of " + analyses[0].Item2.classificationInstances.Count + " classifications for each classifier.");
-
-			doc.Append (analyses.Length.ToString () + " classifiers were compared.  An overview of the results is presented here.\n");
-
-			doc.Append (LatexExtensions.latexLongTableString(
-				"l|;c;c".Split (';'),
-				"Classifier Name;Classifier Rank;Overall Accuracy".Split(';'),
-				new[]{
-					new Tuple<string, double>( @"\textcolor[gray]{0.2}{E$[$Random Selection$]$}", analyses[0].Item2.expectedAccuracyRandom),
-					new Tuple<string, double>( @"\textcolor[gray]{0.2}{Top Class Selection}", analyses[0].Item2.topClassSelectionAccuracy)
-				}.Concat (analyses.Zip (classifierColorers, (analysis, colorer) => new Tuple<string, double>(@"\hyperref[sec:classification " + analysis.Item1 + "]{" + colorer(analysis.Item1) + "}" , analysis.Item2.overallAccuracy))).OrderByDescending (tup => tup.Item2).Select ((tup, index) => new[]{tup.Item1, (index + 1).ToString (), LatexExtensions.colorPercent(tup.Item2)})
-			));
-
-
-			doc.Append (@"\pagebreak[3]");
-			//doc.Append (@"\begin{samepage}"); //samepage and multicols don't play nicely.
-
-			doc.Append (@"\subsection{Classifier Comparison Shared Confusion Matrix}");
-			
-			doc.Append (@"For classes $A, B,$ with score confusion matrices $\mathbf{A}, \mathbf{B}$, shared confusion is defined as $$\sum_{i = 1}^{|\text{classes}|}\sum_{j \in (1, \hdots, |\text{classes}|) \setminus (i)} \sqrt{\min(0, \textbf{A}_{ij} * \textbf{B}_{ij})}$$");
-			doc.Append ("");
-
-
-			//Colorer key:
-
-			doc.Append ("Classifier color key:");
-			doc.Append (@"\begin{multicols}{2}"); //TODO: Calculate number of columns?
-			doc.Append (@"\begin{itemize}");
-			doc.Append (classifiers.Zip (classifierColorers, (classifier, colorer) => @"  \item " + colorer(classifier.Item1)).FoldToString ("", "", "\n"));
-			doc.Append (@"\end{itemize}");
-			doc.Append (@"\end{multicols}");
-
-
-			/*
-			doc.Append (LatexExtensions.latexLabeledMatrixString(
-				"bmatrix", 
-				classifiers.Select (classifier => @"\text{" +classifier.Item1 + "}").ToArray (), 
-				sharedConfusionMatrix.EnumerateRows ().Select (row => row.Select (cell => LatexExtensions.colorDouble(cell)))));
-			*/
-
-			double matrixMax = sharedConfusionMatrix.EnumerateRows ().Flatten1().Where (item => !Double.IsNaN(item)).Max(); //TODO: cleaner expression.  Enumerate the matrix in one go?
-
-			doc.Append (LatexExtensions.latexTabularLabeledMatrixString(
-				classifiers.Zip (classifierColorers, (classifier, colorer) => colorer(LatexExtensions.limitLength(classifier.Item1, 20))).ToArray (), 
-				sharedConfusionMatrix.EnumerateRows ().Select (row => row.Select (cell => LatexExtensions.colorDouble(cell, matrixMax))), 90));
-
-			//doc.Append (@"\end{samepage}");
+			doc.Append (LatexExtensions.ClassifierComparisonLatexString(analyses));
 
 			//Create a section for each classifier.
 
-			foreach(Tuple<string, ClassifierAccuracyAnalysis<Ty>> classifierAnalysis in analyses){
-
-				doc.Append (@"\section{Feature Synthesizer and Classifier Overview for " + classifierAnalysis.Item1 + "}\n\n");
-				doc.Append (@"\label{sec:classifier " + classifierAnalysis.Item1 + "}");
-				doc.Append (classifierAnalysis.Item2.classifier.ClassifierLatexString(LatexExtensions.englishCapitolizeFirst(criterionByWhichToClassify) + " Classifier", (int)((width - 1.6) * 13.5)));
-
-				//Console.WriteLine ("Generated Classifier Overview.");
-
-				doc.Append (@"\section{Full Classifier Accuracy Report for " + classifierAnalysis.Item1 + "}\n\n");
-				doc.Append (@"\label{sec:classification " + classifierAnalysis.Item1 + "}");
-				doc.Append (classifierAnalysis.Item2.latexAccuracyAnalysisString());
-				
-				//Console.WriteLine ("Generated Classifier Accuracy Report.");
-
+			foreach(ClassifierAccuracyAnalysis<Ty> classifierAnalysis in analyses){
+				doc.Append (@"\section{Classifier " + classifierAnalysis.classifierName + "}");
+				doc.Append (@"\label{sec:classifier " + classifierAnalysis.classifierName + "}");
+				doc.Append (classifierAnalysis.classifier.ClassifierLatexString(classifierAnalysis.classifierName, (int)((width - 1.6) * 13.5)));
+				doc.Append (classifierAnalysis.latexAccuracyAnalysisString(@"\subsection", @"\subsubsection"));
 			}
 
 
@@ -180,7 +84,7 @@ namespace TextCharacteristicLearner
 			
 		}
 
-		public static void ProduceClassificationReport<Ty>(string documentTitle, string author, double width, double height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteSeriesDatabase<Ty> dataset, string datasetTitle, string criterionByWhichToClassify){
+		public static void ProduceClassificationReport<Ty>(string documentTitle, string author, double width, double height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName, DiscreteSeriesDatabase<Ty> dataset, string datasetTitle, string criterionByWhichToClassify){
 			
 			LatexDocument doc = new LatexDocument(documentTitle, author, .8, width, height);
 
@@ -202,7 +106,7 @@ namespace TextCharacteristicLearner
 			Console.WriteLine ("Generated Classification Report.");
 
 			doc.Append ("\\section{Classifier Accuracy Report}\n\n");
-			doc.Append (classifier.ClassifierAccuracyLatexString(dataset, criterionByWhichToClassify, .8, 8, .05));
+			doc.Append (classifier.ClassifierAccuracyLatexString(classifierName, dataset, criterionByWhichToClassify, .8, 8, .05));
 			
 			Console.WriteLine ("Generated Classifier Accuracy Report.");
 
@@ -470,7 +374,9 @@ namespace TextCharacteristicLearner
 		public static string ClassifierLatexString<Ty>(this IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName, int lineCols){
 			StringBuilder result = new StringBuilder();
 
-			result.Append ("\\subsection{" + classifierName + "}\n");
+			result.Append ("\\subsection{" + "Classifier Parameters and Trained Model Report" + "}\n");
+			
+			result.Append (@"\label{sec:classifier:model " + classifierName + "}");
 			
 			//result.AppendLine ("Here relevant information is provided on the classifier used to generate the report.");
 			//result.AppendLine ("Generally speaking, the type of the classifier and all parameters are given in the first line, and a complete report of all information learned from training data follows."); // "\\footnote{On a technical note, the reason for the clear difference in representation quality between this section and the remainder of the report is that this section is generated from a string produced by implemetations of the \\texttt{IEventSeriesProbabalisticClassifier<string>} interface, whereas the remaining sections involving the classifier use only the public contract to obtain their data.}");
@@ -503,6 +409,104 @@ namespace TextCharacteristicLearner
 
 			return result.ToString ();
 
+		}
+
+		public static string ClassifierComparisonLatexString<Ty>(ClassifierAccuracyAnalysis<Ty>[] analyses)
+		{
+
+			
+			//Shared confusion matrix calculation:
+			int classifierCount = analyses.Count ();
+			int classCount = analyses.First ().datasetSchema.Length;
+
+			double[,] sharedConfusionMatrix = new double[classifierCount, classifierCount];
+			for (int i = 0; i < classifierCount; i++) {
+				sharedConfusionMatrix [i, i] = Double.NaN;
+				for (int j = i + 1; j < classifierCount; j++) {
+
+					double sharedConfusion = 0;
+					//Sum the shared confusion of confusion matrices i and j
+
+
+					for (int ii = 0; ii < classCount; ii++) {
+						for (int jj = 0; jj < classCount; jj++) {
+							if (ii == jj)
+								continue;
+							double val = analyses [i].confusionMatrixScores [ii, jj] * analyses [j].confusionMatrixScores [ii, jj];
+							if (val > 0)
+								sharedConfusion += val.Sqrt ();
+						}
+					}
+					sharedConfusionMatrix [i, j] = sharedConfusionMatrix [j, i] = sharedConfusion;
+				}
+			}
+
+			//Generate colors for classifiers
+			Func<string, string>[] classifierColorers = Enumerable.Range (0, classifierCount).Select ((a) => getRandomColorer (.8)).ToArray ();
+
+
+
+
+			StringBuilder result = new StringBuilder ();
+			result.AppendLine (@"\subsection{Classifier Comparison Overview}");
+
+			//Overview
+			result.AppendLine ("Over a set of " + analyses [0].labeledData.data.Count + " labeled instances, " + analyses.Length + " classifiers were compared.  In this experiment, a training data to test data ratio of " + analyses [0].trainSplitFrac.ToString (LatexExtensions.formatString) + " (" + ((int)(analyses [0].trainSplitFrac * analyses [0].labeledData.data.Count ())) + " training, " + (analyses [0].labeledData.data.Count - ((int)(analyses [0].trainSplitFrac * analyses [0].labeledData.data.Count ()))) + " test instances) was used.");
+			result.AppendLine ("The process was repeated " + LatexExtensions.englishCountOfString ("time", analyses [0].iterations) + ", for a total of " + analyses [0].classificationInstances.Count + " classifications for each classifier.");
+
+			result.AppendLine (analyses.Length.ToString () + " classifiers were compared.  An overview of the results is presented here.\n");
+
+			result.AppendLine (LatexExtensions.latexLongTableString (
+				"l|;c;c".Split (';'),
+				"Classifier Name;Classifier Rank;Overall Accuracy".Split (';'),
+				new[]{
+					new Tuple<string, double> (@"\textcolor[gray]{0.2}{E$[$Random Selection$]$}", analyses [0].expectedAccuracyRandom),
+					new Tuple<string, double> (@"\textcolor[gray]{0.2}{Top Class Selection}", analyses [0].topClassSelectionAccuracy)
+				}.Concat (analyses.Zip (classifierColorers, (analysis, colorer) => new Tuple<string, double> (@"\hyperref[sec:classifier " + analysis.classifierName + "]{" + colorer (analysis.classifierName) + "}", analysis.overallAccuracy))).OrderByDescending (tup => tup.Item2).Select ((tup, index) => new[] {
+				tup.Item1,
+				(index + 1).ToString (),
+				LatexExtensions.colorPercent (tup.Item2)
+			})
+			)
+			);
+
+
+			result.AppendLine (@"\pagebreak[3]");
+			//doc.Append (@"\begin{samepage}"); //samepage and multicols don't play nicely.
+
+			result.AppendLine (@"\subsection{Classifier Comparison Shared Confusion Matrix}");
+			
+			result.AppendLine (@"For classes $A, B,$ with score confusion matrices $\mathbf{A}, \mathbf{B}$, shared confusion is defined as $$\sum_{i = 1}^{|\text{classes}|}\sum_{j \in (1, \hdots, |\text{classes}|) \setminus (i)} \sqrt{\min(0, \textbf{A}_{ij} * \textbf{B}_{ij})}$$");
+			result.AppendLine ("");
+
+
+			//Colorer key:
+
+			result.AppendLine ("Classifier color key:");
+			result.AppendLine (@"\begin{multicols}{2}"); //TODO: Calculate number of columns?
+			result.AppendLine (@"\begin{itemize}");
+			result.AppendLine (analyses.Zip (classifierColorers, (analysis, colorer) => @"  \item " + colorer (analysis.classifierName)).FoldToString ("", "", "\n"));
+			result.AppendLine (@"\end{itemize}");
+			result.AppendLine (@"\end{multicols}");
+
+
+			/*
+			doc.Append (LatexExtensions.latexLabeledMatrixString(
+				"bmatrix", 
+				classifiers.Select (classifier => @"\text{" +classifier.Item1 + "}").ToArray (), 
+				sharedConfusionMatrix.EnumerateRows ().Select (row => row.Select (cell => LatexExtensions.colorDouble(cell)))));
+			*/
+
+			double matrixMax = sharedConfusionMatrix.EnumerateRows ().Flatten1 ().Where (item => !Double.IsNaN (item)).Max (); //TODO: cleaner expression.  Enumerate the matrix in one go?
+
+			result.AppendLine (LatexExtensions.latexTabularLabeledMatrixString (
+				analyses.Zip (classifierColorers, (analysis, colorer) => colorer (LatexExtensions.limitLength (analysis.classifierName, 20))).ToArray (), 
+				sharedConfusionMatrix.EnumerateRows ().Select (row => row.Select (cell => LatexExtensions.colorDouble (cell, matrixMax))), 90)
+			);
+
+			//doc.Append (@"\end{samepage}");
+
+			return result.ToString ();
 		}
 
 		//HELPER
@@ -553,9 +557,9 @@ namespace TextCharacteristicLearner
 
 		}
 
-		public static string ClassifierAccuracyLatexString<Ty> (this IEventSeriesProbabalisticClassifier<Ty> featureSynth, DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
+		public static string ClassifierAccuracyLatexString<Ty> (this IEventSeriesProbabalisticClassifier<Ty> featureSynth, string classifierName, DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
 		{
-			ClassifierAccuracyAnalysis<Ty> analysis = new ClassifierAccuracyAnalysis<Ty>(featureSynth, labeledData, criterionByWhichToClassify, trainSplitFrac, iterations, bucketSize);
+			ClassifierAccuracyAnalysis<Ty> analysis = new ClassifierAccuracyAnalysis<Ty>(featureSynth, classifierName, labeledData, criterionByWhichToClassify, trainSplitFrac, iterations, bucketSize);
 			analysis.runAccuracyAnalysis();
 
 			return analysis.latexAccuracyAnalysisString();
@@ -1207,6 +1211,21 @@ namespace TextCharacteristicLearner
 		public static string englishCapitolizeFirst(string s){
 			return s.Substring (0, 1).ToUpper () + s.Substring (1);
 		}
+
+
+		 
+
+		//COLOR:
+		
+		public static Random rand = new Random();
+		public static string applyRandomLatexColor(string s){
+			return getRandomColorer()(s);
+		}
+		public static Func<string, string> getRandomColorer(double max = .8){
+			string colorStr = Enumerable.Range (0, 3).Select (item => (rand.NextDouble () * max).ToString ("F3")).FoldToString ("", "", ",");
+			return s => @"\textcolor[rgb]{" + colorStr + "}{" + s + "}";
+		}
+
 
 	}
 }

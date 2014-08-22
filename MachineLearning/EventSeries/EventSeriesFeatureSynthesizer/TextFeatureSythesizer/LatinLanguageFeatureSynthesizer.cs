@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using Whetstone;
+
 namespace TextCharacteristicLearner
 {
 	[AlgorithmNameAttribute("Latin language feature synthesizer")]
@@ -22,7 +24,7 @@ namespace TextCharacteristicLearner
 			throw new Exception("Cannot train a LatinLanguageFeatureSynthesizer.");
 		}
 
-		string[] featureSchema = "Word Count;Mean Word Length;Mean Sentence Length".Split (';');
+		string[] featureSchema = "Word Count;Mean Word Length;Stdev Word Length;Mean Sentence Length".Split (';');
 		public string[] GetFeatureSchema(){
 			return featureSchema;
 		}
@@ -33,12 +35,17 @@ namespace TextCharacteristicLearner
 
 		//Synthesize features for an item.
 		public double[] SynthesizeFeatures(DiscreteEventSeries<string> item){
-			//"Word Count;Mean Sentence Length;Orthographical Error Rate;Formality;Textspeak"
+
+			double wordCount = item.data.Length;
+			double meanWordLength = item.data.Select (word => word.Length).Average();
+			double stdevWordLength = item.data.Select (word => (double)word.Length).Stdev(meanWordLength);
+			double meanSentenceLength = item.data.Length / (double)item.data.Where(word => stops.Contains(word)).Count(); //TODO: Stdev sentence length would be nice.
 
 			return new[]{
-				item.data.Length,
-				item.data.Select (word => word.Length).Sum () / (double)item.data.Length,
-				item.data.Length / (double)item.data.Where(word => stops.Contains(word)).Count(),
+				wordCount,
+				meanWordLength,
+				stdevWordLength,
+				meanSentenceLength
 			};
 		}
 	}

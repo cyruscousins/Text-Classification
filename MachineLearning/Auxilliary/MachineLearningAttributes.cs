@@ -198,7 +198,7 @@ namespace TextCharacteristicLearner
 
 			if(model is IFeatureSynthesizer<string>){ //TODO: Generic!
 				modelString.AppendLine (@"\item[Output Schema] \hfill \\");
-				modelString.AppendLine(((IFeatureSynthesizer<string>)model).GetFeatureSchema().FoldToString (item => "``\texttt{" + ObjectLatexString(item) + "}''", @"$\langle$", @"$\rangle$", ", "));
+				modelString.AppendLine(((IFeatureSynthesizer<string>)model).GetFeatureSchema().FoldToString (item => @"``\texttt{" + ObjectLatexString(item) + "}''", @"$\langle$", @"$\rangle$", ", "));
 			}
 
 			if (trainingParameters.Any ()) {
