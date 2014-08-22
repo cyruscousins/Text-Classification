@@ -151,6 +151,14 @@ namespace TextCharacteristicLearner
 			modelString.AppendLine (name + " (" + modelType.Name + "):");
 			modelString.AppendLine ("\tAlgorithm Parameters:");
 			modelString.AppendLine (algorithmParameters.FoldToString (param => param.Item1 + " = " + ObjectString (param.Item2), "\t\t", "", "\n\t\t"));
+
+			//TRAINING:
+
+			if(model is IFeatureSynthesizer<string>){ //TODO: Generic!
+				modelString.AppendLine ("Output Schema:");
+				modelString.AppendLine(((IFeatureSynthesizer<string>)model).GetFeatureSchema().FoldToString ());
+			}
+
 			if (trainingParameters.Any ()) {
 				modelString.AppendLine ("\tAlgorithm Training:");
 				modelString.AppendLine (trainingParameters.FoldToString (param => param.Item1 + " = " + ObjectString (param.Item2), "\t\t", "", "\n\t\t"));
@@ -175,23 +183,35 @@ namespace TextCharacteristicLearner
 			StringBuilder modelString = new StringBuilder ();
 			modelString.AppendLine (@"\textbf{\textcolor[rgb]{.3,.8,.7}{" + name + "}}" + " (" + @"\texttt{" + modelType.Name + "}" + "):" + "\n");
 
-			modelString.AppendLine (@"\begin{itemize}");
+//			modelString.AppendLine (@"\begin{easylist}[itemize]");
+			modelString.AppendLine (@"\begin{description}");
 
-			modelString.AppendLine (@"\item Algorithm Parameters");
-			//TODO: Generic parameters on this one?
-			modelString.AppendLine (@"\begin{itemize}");
-			modelString.AppendLine (algorithmParameters.FoldToString (tup => @"\textcolor[rgb]{.95,.85,.9}{" + tup.Item1 + "}" + " = " + ObjectLatexString (tup.Item2), @"\item ", "", "\n\\item "));
-			modelString.AppendLine (@"\end{itemize}");
+			if (algorithmParameters.Any ()) {
+				modelString.AppendLine (@"\item[Algorithm Parameters] \hfill \\");
+				//TODO: Generic parameters on this one?
+//				modelString.AppendLine (@"\begin{easylist}[itemize]");
+				modelString.AppendLine (@"\begin{itemize}");
+				modelString.AppendLine (algorithmParameters.FoldToString (tup => @"\textcolor[rgb]{.9,.75,.8}{" + tup.Item1 + "}" + " = " + ObjectLatexString (tup.Item2), @"\item ", "", "\n\\item "));
+				modelString.AppendLine (@"\end{itemize}");
+			}
+			//TRAINING:
+
+			if(model is IFeatureSynthesizer<string>){ //TODO: Generic!
+				modelString.AppendLine (@"\item[Output Schema] \hfill \\");
+				modelString.AppendLine(((IFeatureSynthesizer<string>)model).GetFeatureSchema().FoldToString (item => "``\texttt{" + ObjectLatexString(item) + "}''", @"$\langle$", @"$\rangle$", ", "));
+			}
 
 			if (trainingParameters.Any ()) {
-				modelString.AppendLine (@"\item Algorithm Training");
+				modelString.AppendLine (@"\item[Algorithm Training] \hfill \\");
 
 				//TODO Finalize color scheme.
+				//modelString.AppendLine (@"\begin{easylist}[itemize]");
 				modelString.AppendLine (@"\begin{itemize}");
 				modelString.AppendLine (trainingParameters.FoldToString (tup => @"\textcolor[rgb]{.75,.55,.95}{" + tup.Item1 + "}" + " = " + ObjectLatexString (tup.Item2), @"\item ", "", "\n\\item "));
 				modelString.AppendLine (@"\end{itemize}");
 			}
-			modelString.AppendLine (@"\end{itemize}");
+//			modelString.AppendLine (@"\end{easylist}");
+			modelString.AppendLine (@"\end{description}");
 
 			return modelString.ToString();
 
@@ -206,7 +226,12 @@ namespace TextCharacteristicLearner
 				Type genericType = typeof(object);
 				//TODO: Discover the type.  Cannot just examine generic arguments, have to get generic arguments of IEnumerable in particular.
 				IEnumerable<Object> enumerable = ((IEnumerable)o).Cast<object>().ToArray ();
-				return genericType.Name + "[" + enumerable.Count() + "] = " + enumerable.FoldToString(item => ObjectString (item), "{\n\t", "\n}", ",\n\t");
+
+				//Output simple types on a single line.  
+				if(o is IEnumerable<double> || o is IEnumerable<int>){ //TODO: Express this more cleanly.
+					return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectString (item));
+				}
+				return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectString (item), "{\n\t", "\n}", ",\n\t");
 			}
 			if(o is Double){
 				return ((Double)o).ToString ("G4");
@@ -227,7 +252,11 @@ namespace TextCharacteristicLearner
 				Type genericType = typeof(object);
 				//TODO: Discover the type.  Cannot just examine generic arguments, have to get generic arguments of IEnumerable in particular.
 				IEnumerable<Object> enumerable = ((IEnumerable)o).Cast<object>().ToArray ();
-				return genericType.Name + "[" + enumerable.Count() + "] = " + enumerable.FoldToString(item => ObjectLatexString (item), "\\begin{enumerate}\n\\item ", "\n\\end{enumerate}", "\n\\item ");
+				if(o is IEnumerable<double> || o is IEnumerable<int>){ //TODO: Express this more cleanly.
+					return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectString (item), @"$\mathlarger\langle$", @"$\mathlarger\rangle$", ", ");
+				}
+//				return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectLatexString (item), "\\begin{easylist}[enumerate]\n\\item ", "\n\\end{easylist}", "\n\\item ");
+				return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectLatexString (item), "\n\\begin{enumerate}\n\\item ", "\n\\end{enumerate}", "\n\\item ");
 			}
 			if(o is double){
 				double d = (double)o;
@@ -249,8 +278,5 @@ namespace TextCharacteristicLearner
 			return o.ToString ().RegexReplace("([#$%_{}])", @"\$1");
 		}
 
-
 	}
-
 }
-

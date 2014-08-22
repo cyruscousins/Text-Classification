@@ -20,16 +20,27 @@ namespace TextCharacteristicLearner
 	}
 
 	//TODO: This is extremely slow.  Optimize and use smarter code..
+	[AlgorithmNameAttribute("Probabalistic K Nearest Neighbors Classifier")]
 	public class ProbabalisticKnn : IProbabalisticClassifier
 	{
-		int k;
+		[AlgorithmParameterAttribute("k", 0)]
+		public int k;
 
-		KnnTrainingMode trainingMode;
-		KnnClassificationMode classifyMode;
+		[AlgorithmParameterAttribute("training mode", 1)]
+		public KnnTrainingMode trainingMode;
 
-		private string[] schema;
+		[AlgorithmParameterAttribute("classification mode", 2)]
+		public KnnClassificationMode classifyMode;
+
 
 		private TupleStruct<int, double[]>[] values;
+
+		[AlgorithmTrainingAttribute("samples", 0)]
+		public IEnumerable<string> samples(){
+			return values.Select (val => schema[val.Item1] + ": " + val.Item2.FoldToString(item => item.ToString ("G4")));
+		}
+		
+		private string[] schema;
 
 		public ProbabalisticKnn (int k, KnnClassificationMode classificationMode = KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode trainingMode = KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES)
 		{

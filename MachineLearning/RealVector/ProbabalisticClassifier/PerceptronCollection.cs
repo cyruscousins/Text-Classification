@@ -7,7 +7,7 @@ using Whetstone;
 
 namespace TextCharacteristicLearner
 {
-	//Perceptron from 
+	//Perceptron adapted from 
 
 	//http://dynamicnotions.blogspot.com/2008/09/single-layer-perceptron.html
 
@@ -119,7 +119,7 @@ namespace TextCharacteristicLearner
         }
 
 		public override string ToString(){
-			return "{" + "Perceptron: learning rate = " + learningRate + ", max iterations = " + maxIterations + "\n" + 
+			return "{" + "Perceptron: learning rate = " + learningRate + ", max iterations = " + maxIterations + "," + "weights = " +
 				weights.FoldToString (weight => weight.ToString ("F2")) + 
 					"}";
 		}
@@ -140,15 +140,29 @@ namespace TextCharacteristicLearner
 		USE_SCORES_NEGATIVES = 3
 	}
 
+	[AlgorithmNameAttribute("perceptron cloud")]
 	public class PerceptronCollection : IProbabalisticClassifier
 	{
-		TupleStruct<Perceptron, int[]>[] perceptrons; //The perceptron and the classes it pertains to.
 
+		//Algorithm Parameters
+		[AlgorithmParameterAttribute("perceptron count factor", 0)]
 		double perceptronCountFactor;
 
+		[AlgorithmParameterAttribute("training mode", 1)]
 		PerceptronTrainingMode trainingMode;
 
+		[AlgorithmParameterAttribute("classification mode", 2)]
 		PerceptronClassificationMode classificationMode;
+
+		//Training vaules
+		[AlgorithmTrainingAttribute("trained perceptrons", 0)]
+		public IEnumerable<string> perceptronStrings{
+			get{
+				return perceptrons.Select (tup => tup.Item2.Select (index => classes[index]).Order ().FoldToString () + ": " + tup.Item1.ToString ());
+			}
+		}
+
+		TupleStruct<Perceptron, int[]>[] perceptrons; //The perceptron and the classes it pertains to.
 
 		string[] classes;
 		public string[] GetClasses(){

@@ -7,9 +7,11 @@ using Whetstone;
 
 namespace TextCharacteristicLearner
 {
+	[AlgorithmNameAttribute("equiweighted ensemble probabalistic classifier")]
 	public class EnsembleProbabalisticClassifier : IProbabalisticClassifier
 	{
-		IProbabalisticClassifier[] classifiers;
+		[AlgorithmParameterAttribute("classifier ensemble", 0)]
+		public IProbabalisticClassifier[] classifiers;
 
 		//TODO, weights, trainings, ...
 

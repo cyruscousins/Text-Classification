@@ -108,7 +108,7 @@ namespace TextCharacteristicLearner
 
 			//Overview
 			doc.Append ("Over a set of " + analyses[0].Item2.labeledData.data.Count + " labeled instances, " + analyses.Length + " classifiers were compared.  In this experiment, a training data to test data ratio of " + analyses[0].Item2.trainSplitFrac.ToString(LatexExtensions.formatString) + " (" + ((int) (analyses[0].Item2.trainSplitFrac * analyses[0].Item2.labeledData.data.Count())) + " training, " + (analyses[0].Item2.labeledData.data.Count - ((int) (analyses[0].Item2.trainSplitFrac * analyses[0].Item2.labeledData.data.Count()))) + " test instances) was used.");
-			doc.Append ("The process was repeated " + analyses[0].Item2.iterations + " times, for a total of " + analyses[0].Item2.classificationInstances.Count + " classifications for each classifier.");
+			doc.Append ("The process was repeated " + LatexExtensions.englishCountOfString("time", analyses[0].Item2.iterations) + ", for a total of " + analyses[0].Item2.classificationInstances.Count + " classifications for each classifier.");
 
 			doc.Append (analyses.Length.ToString () + " classifiers were compared.  An overview of the results is presented here.\n");
 
@@ -252,7 +252,7 @@ namespace TextCharacteristicLearner
 
 \usepackage{graphicx}
 
-\usepackage{hyperref}
+\usepackage{hyperref} %TODO: This is causing problems.
 \usepackage{color}
 
 \usepackage{indentfirst}
@@ -262,6 +262,8 @@ namespace TextCharacteristicLearner
 \usepackage{multicol}
 
 \usepackage{relsize}
+
+\usepackage[ampersand]{easylist}
 
 
 " + "\\usepackage[margin=" + margin + "in, paperwidth=" + width + "in, paperheight=" + height + "in]{geometry}\n"
@@ -470,21 +472,22 @@ namespace TextCharacteristicLearner
 
 			result.Append ("\\subsection{" + classifierName + "}\n");
 			
-			result.AppendLine ("Here relevant information is provided on the classifier used to generate the report.");
-			result.AppendLine ("Generally speaking, the type of the classifier and all parameters are given in the first line, and a complete report of all information learned from training data follows.\\footnote{On a technical note, the reason for the clear difference in representation quality between this section and the remainder of the report is that this section is generated from a string produced by implemetations of the \\texttt{IEventSeriesProbabalisticClassifier<string>} interface, whereas the remaining sections involving the classifier use only the public contract to obtain their data.}");
+			//result.AppendLine ("Here relevant information is provided on the classifier used to generate the report.");
+			//result.AppendLine ("Generally speaking, the type of the classifier and all parameters are given in the first line, and a complete report of all information learned from training data follows."); // "\\footnote{On a technical note, the reason for the clear difference in representation quality between this section and the remainder of the report is that this section is generated from a string produced by implemetations of the \\texttt{IEventSeriesProbabalisticClassifier<string>} interface, whereas the remaining sections involving the classifier use only the public contract to obtain their data.}");
 
 
-			string fsynthstr = WordWrap(classifier.ToString (), lineCols);
+			//string fsynthstr = WordWrap(classifier.ToString (), lineCols);
 
 			//TODO: Escape?
 			//Package inputenc Error: Unicode char \u8:² not set up for use with LaTeX.
 
 			//TODO: Make this less bad.
 
+			/*
 			result.Append ("\\begin{verbatim}\n");
 			result.Append (fsynthstr);
 			result.Append ("\n\\end{verbatim}\n");
-
+			*/
 
 			/*
 			result.Append("MODERN TEXT OUTPUT:\n");

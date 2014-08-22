@@ -13,7 +13,7 @@ namespace TextCharacteristicLearner
 		//Training can all be done on the same data safely.
 
 		[AlgorithmParameterAttribute("Feature Synthesizers", 0)]
-		IFeatureSynthesizer<Ty>[] synths;
+		public IFeatureSynthesizer<Ty>[] synths;
 
 		//Data Accessors:
 

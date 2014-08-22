@@ -118,10 +118,11 @@ namespace TextCharacteristicLearner
 				}
 			);
 
-
+			/*
 			if(test){
 				classifiers = classifiers.Take (2);
 			}
+			*/
 
 
 			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers.ToArray (), "Spanish Language", allData, "region", test ? 1 : 16, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
@@ -328,7 +329,6 @@ namespace TextCharacteristicLearner
 				file += "region:cuba;type:wiki cubaisla\n";
 				file += "region:cuba;type:receta recetascuba2\n";
 				file += "region:cuba;type:receta recetascuba3\n";
-				file += "region:cuba recetascuba3\n";
 				file += "region:cuba;type:literatura lahistoriame\n";
 				file += "region:cuba;type:literatura elencuentro\n";
 			}

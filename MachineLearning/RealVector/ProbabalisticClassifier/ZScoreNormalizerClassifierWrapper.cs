@@ -7,12 +7,17 @@ using Whetstone;
 namespace TextCharacteristicLearner
 {
 	//While certainly not a classifier on its own, the ZScoreNormalizer serves as an adapter, being connected immediately to a classifier, and thus fulfils the contracts.
+	[AlgorithmNameAttribute("z-score normalizer")]
 	public class ZScoreNormalizerClassifierWrapper : IProbabalisticClassifier
 	{
-		IProbabalisticClassifier classifier;
-
-		double[] stdevs;
-		double[] means;
+		[AlgorithmParameterAttribute("classifier", 0)]
+		public IProbabalisticClassifier classifier;
+		
+		[AlgorithmTrainingAttribute("standard deviations vector", 1)]
+		public double[] stdevs;
+		
+		[AlgorithmTrainingAttribute("means vector", 1)]
+		public double[] means;
 
 		public ZScoreNormalizerClassifierWrapper (IProbabalisticClassifier classifier)
 		{
