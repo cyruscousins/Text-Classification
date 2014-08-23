@@ -74,10 +74,10 @@ namespace TextCharacteristicLearner
 		public static void TestLatex ()
 		{
 
-			bool test = true;
+			bool test = false;
 			bool shorten = true;
-			bool costarica = true;
-			bool cuba = true;
+			bool costarica = false;
+			bool cuba = false;
 
 			if(test){
 				costarica = cuba = false;

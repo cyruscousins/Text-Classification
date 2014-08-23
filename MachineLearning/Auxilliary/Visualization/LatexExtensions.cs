@@ -299,7 +299,57 @@ namespace TextCharacteristicLearner
 				})
 			));
 
+			//Intercriteria class correlation
+			//This section is useful for discovering that:
+			//Stories written by author A are often about subject B, or even that documents written about subject C were often written during time period D.
 
+			int minClassSize = 3;
+			double significantDifference = .1;
+			int correlationsToTake = 50;
+			//Criterion A, class A, criterion B, class B, double % A that are also in B, double expected %A that are also in B under random hypothesis, class A size, class B size
+			IEnumerable<TupleStruct<string, string, string, string, double, double, int, int>> allCorrelations = 
+				dataByCriterionAndClass.SelectMany (
+					criterion1 => criterion1.Item2.SelectMany(
+						class1 => (class1.Item2.Length < minClassSize) ? new EmptyList<TupleStruct<string, string, string, string, double, double, int, int>>() : dataByCriterionAndClass.SelectMany(
+							criterion2 => (criterion1.Item1 == criterion2.Item1) ? new EmptyList<TupleStruct<string, string, string, string, double, double, int, int>>() : criterion2.Item2.Select(
+								class2 => new TupleStruct<string, string, string, string, double, double, int, int>(
+									criterion1.Item1, 
+									class1.Item1, 
+									criterion2.Item1, 
+									class2.Item1,
+									class2.Item2.Where (instance => instance.labels.GetWithDefault (criterion1.Item1, (string)null) == class1.Item1).Count () / (double)class2.Item2.Length,
+									class1.Item2.Length / (double)criterion1.Item2.Sum (@class => @class.Item2.Length),
+									class1.Item2.Length,
+									class2.Item2.Length
+								)
+			))));
+			TupleStruct<string, string, string, string, double, double, int, int>[] significantCorrelations = allCorrelations.Where (tup => 
+				tup.Item8 > minClassSize //Item 7 is already checked
+				&& Math.Abs (tup.Item5 - tup.Item6) > significantDifference //TODO statistical significance.
+			).OrderByDescending (tup => Math.Abs (tup.Item5 - tup.Item6)).Take (correlationsToTake).ToArray (); 
+
+			if(significantCorrelations.Length > 0){
+				result.AppendLine (@"\subsubsection{Intercriterion Class Correlations}");
+				
+				int cols = 1; //TODO: Calculate this based on string lengths and page width
+				if (cols > 1) result.AppendLine (@"\begin{multicols}{" + cols + "}");
+				result.AppendLine (@"\begin{enumerate}[1.]");
+
+				/*
+				result.AppendLine (significantCorrelations.FoldToString (
+					corr => "Instances of class " + corr.Item1 + ":" + corr.Item2 + "(" + corr.Item7 + ")" + " are found in " + colorPercent(corr.Item5) + " of " + "class " + corr.Item3 + ":" + corr.Item4 + "(" + corr.Item8 + ").  " + "Expected " + colorPercent (corr.Item6) + ".",
+					@"\item ", "", "\n\\item "));
+				*/
+
+				result.AppendLine (significantCorrelations.FoldToString (
+					corr => 
+						"Class " + corr.Item1 + ":" + corr.Item2 + "(" + corr.Item7 + ")" + " is " + quantificationAdverbPhrase(Math.Pow (Math.Abs (corr.Item5 - corr.Item6), 1.5)) +
+						"" + ((corr.Item5 < corr.Item6) ? "under" : "over") + " represented in class " + corr.Item3 + ":" + corr.Item4 + "(" + corr.Item8 + ").  " + "(Found " + colorPercent(corr.Item5) + ", expected " + colorPercent (corr.Item6) + ").",
+					@"\item ", "", "\n\\item "));
+
+				result.AppendLine (@"\end{enumerate}");
+				if (cols > 1) result.AppendLine (@"\end{multicols}");
+    	    }
 
 			foreach(Tuple<string, Tuple<string, DiscreteEventSeries<Ty>[]>[]> criterionData in dataByCriterionAndClass){
 				int classCount = criterionData.Item2.Length;
@@ -1041,18 +1091,18 @@ namespace TextCharacteristicLearner
 
 		internal static string[] quantificationAdverbPhrases = "infinitessimally;ever so slightly;a tiny bit;slightly;noticably;somewhat;quite;very;heavily;quite heavily;extremely;near completely".Split(';');
 		internal static string quantificationAdverbPhrase(double d){
-			if(d < 0.0001) return "not";
-			if(d > 0.999) return "fully";
+			if(d < 0.000001) return "not";
+			if(d > 0.99999) return "fully";
 			return quantificationAdverbPhrases[(int)(d * quantificationAdverbPhrases.Length)];
 		}
 
 		internal static string[] frequencyQuantificationAdverbPhrases = "infinitessimally infrequently;virtually never;intermittently;rarely;occasionally;infrequntly;sometimes;often;quite often;frequently;more often than not;usually;quite frequently;nearly constantly;almost always".Split (';');
 		//English language functions
 		internal static string frequencyQuantificationAdverbPhrase(double d){
-			if(d < .0001){
+			if(d < .000001){
 				return "never";
 			}
-			if(d > .9999){
+			if(d > .99999){
 				return "always";
 			}
 			return frequencyQuantificationAdverbPhrases[(int)(d * quantificationAdverbPhrases.Length)];

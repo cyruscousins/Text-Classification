@@ -169,6 +169,16 @@ namespace Whetstone{
 		public static bool IsEmpty<A>(this IEnumerable<A> data){
 			return !data.Any ();
 		}
+		
+		public static bool IsEmpty<A>(this A[] data){
+			return data.Length == 0;
+		}
+
+		//This is (probably) faster than the Linq any for array types.
+		public static bool Any<A>(this A[] data){
+			return data.Length > 0;
+		}
+
 
 		//Lists
 		
