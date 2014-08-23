@@ -231,7 +231,7 @@ namespace TextCharacteristicLearner
 		{
 			return hash;
 		}
-		private static int hashCode<A>(ArraySlice_t<A> data){
+		private static int hashCode<H>(ArraySlice_t<H> data){
 			//TODO: This breaks on a 0mer.  Must make those illegal.
 
 			int hash = data[0].GetHashCode();

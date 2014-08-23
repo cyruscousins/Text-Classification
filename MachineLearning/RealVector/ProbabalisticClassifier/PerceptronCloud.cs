@@ -17,9 +17,11 @@ namespace TextCharacteristicLearner
 		double learningRate = 0.1;
 
 		int maxIterations = 200;
+		bool normalizeWeights;
 
-		public Perceptron(int dimension){
+		public Perceptron(int dimension, bool normalizeWeights = true){
 			weights = new double[dimension];
+			this.normalizeWeights = normalizeWeights;
 		}
 
 		public void Train(TupleStruct<double[], int>[] trainingInstances){
@@ -57,20 +59,18 @@ namespace TextCharacteristicLearner
  
             } while (globalError != 0 && iteration < maxIterations);
 
-			weights.NormalizeInPlace ();
+			if(normalizeWeights) weights.NormalizeInPlace ();
 
 		}
 
 		//Modified perceptron training: this perceptron takes a double as argument and uses the strength of the output compared to the double to train.
 		public void Train(TupleStruct<double[], int, double>[] trainingInstances){
 
-
 			//Console.WriteLine ("TRAINING PERCEPTRON EVEN WEIGHTS");
 
             int iteration = 0;
             double globalError;
 
-			//TODO: globalError won't drop to 0 except in cases where all instances are linearly independent (I think).  TODO: Proof of that.
             do
             {
                 globalError = 0;
@@ -104,7 +104,7 @@ namespace TextCharacteristicLearner
  
             } while (globalError != 0 && iteration < maxIterations);
 
-			weights.NormalizeInPlace ();
+			if(normalizeWeights) weights.NormalizeInPlace ();
 
 		}
 
@@ -119,11 +119,10 @@ namespace TextCharacteristicLearner
         }
 
 		public override string ToString(){
-			return "{" + "Perceptron: learning rate = " + learningRate + ", max iterations = " + maxIterations + "," + "weights = " +
+			return "{" + "Perceptron: learning rate = " + learningRate + ", " + "max iterations = " + maxIterations + ", " + "weights" + (normalizeWeights ? " (normalized)" : "") +
 				weights.FoldToString (weight => weight.ToString ("F2")) + 
 					"}";
 		}
-
     }
 
 	public enum PerceptronTrainingMode{
@@ -141,7 +140,7 @@ namespace TextCharacteristicLearner
 	}
 
 	[AlgorithmNameAttribute("perceptron cloud")]
-	public class PerceptronCollection : IProbabalisticClassifier
+	public class PerceptronCloud : IProbabalisticClassifier
 	{
 
 		//Algorithm Parameters
@@ -154,20 +153,36 @@ namespace TextCharacteristicLearner
 		[AlgorithmParameterAttribute("classification mode", 2)]
 		PerceptronClassificationMode classificationMode;
 
-		//Training vaules
+		[AlgorithmParameterAttribute("cloud size gaussian distribution stdev", 3)]
+		double cloudSizeStDev;
+
+		//Currently this is shown by the perceptrons themselves.
+		bool normalizePerceptrons;
+
+		//Training values
 		[AlgorithmTrainingAttribute("trained perceptrons", 0)]
 		public IEnumerable<string> perceptronStrings{
 			get{
 				return perceptrons.Select (tup => tup.Item2.Select (index => classes[index]).Order ().FoldToString () + ": " + tup.Item1.ToString ());
 			}
 		}
-
 		TupleStruct<Perceptron, int[]>[] perceptrons; //The perceptron and the classes it pertains to.
+
 
 		string[] classes;
 		public string[] GetClasses(){
 			return classes;
 		}
+
+		public PerceptronCloud (double extraFactor = 2.0, PerceptronTrainingMode trainingMode = PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode classificationMode = PerceptronClassificationMode.NOFLAGS, double cloudSizeStDev = 0, bool normalizePerceptrons = true)
+		{
+			this.perceptronCountFactor = extraFactor;
+			this.trainingMode = trainingMode;
+			this.classificationMode = classificationMode;
+			this.cloudSizeStDev = cloudSizeStDev;
+			this.normalizePerceptrons = normalizePerceptrons;
+		}
+
 		public void Train(IEnumerable<LabeledInstance> trainingData){
 			trainingData = trainingData.ToArray(); //TODO performance.
 			classes = trainingData.Select (item => item.label).Distinct ().Order ().ToArray ();
@@ -178,15 +193,26 @@ namespace TextCharacteristicLearner
 
 			int perceptronCount = (int)Math.Ceiling(Math.Log(classes.Length, 2) * perceptronCountFactor); //Need at least log_2 perceptrons to be able to represent any item with a TRUE combination.  Take twice as many to improve predictive power.
 
-			//TODO Pick classes better.  This technique favors larger classes. (Use training modes).
+			Random rand;
+			if(cloudSizeStDev == 0){
+				rand = null;
+			}
+			else{
+				rand = new Random();
+			}
 			switch(trainingMode){
 				case PerceptronTrainingMode.TRAIN_ALL_DATA:
 				{
 					//TODO Don't shuffle every time.  Highly inefficient.
-					perceptrons = Enumerable.Range (0, perceptronCount).Select (
-						val => buildPerceptronForRandomClasses(trainingData.Shuffle().Select (instance => 
-					    	new TupleStruct<double[], int>(instance.values, classLookup[instance.label])), 
-					        dimension)
+					perceptrons = Enumerable.Range (0, perceptronCount).Select (val => 
+						{
+							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classesToTake (rand)).ToArray ();
+							Perceptron perceptron = buildPerceptronForAllData(trainingData.Shuffle().Select (instance => 
+						    	new TupleStruct<double[], int>(instance.values, classLookup[instance.label])), 
+					            new HashSet<int>(classIndices),
+						        dimension);
+							return new TupleStruct<Perceptron, int[]>(perceptron, classIndices);
+						}
 					).ToArray ();
 					break;
 				}
@@ -198,8 +224,8 @@ namespace TextCharacteristicLearner
 						classCounts[grp.Key] = grp.Count ();
 					}
 					perceptrons = Enumerable.Range (0, perceptronCount).Select (index => 
-				        {
-							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classes.Length / 2).ToArray();
+				        {	
+							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classesToTake (rand)).ToArray(); //TODO: Don't shufle every time.
 							Perceptron perceptron = buildPerceptronEvenClassSizes(byLabel, new HashSet<int>(classIndices), classCounts.Min (), dimension);
 							return new TupleStruct<Perceptron, int[]>(perceptron, classIndices);
 						}
@@ -215,7 +241,7 @@ namespace TextCharacteristicLearner
 					}
 					perceptrons = Enumerable.Range (0, perceptronCount).Select (index => 
 				        {
-							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classes.Length / 2).ToArray();
+							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classesToTake (rand)).ToArray();
 							Perceptron perceptron = buildPerceptronEvenWeights(byLabel, new HashSet<int>(classIndices), classCounts, dimension);
 							return new TupleStruct<Perceptron, int[]>(perceptron, classIndices);
 						}
@@ -223,20 +249,46 @@ namespace TextCharacteristicLearner
 					break;
 				}
 			}
-				//TODO: Next Up: Learning Ensemble.  
 		}
 
-		//Here we take in an IGrouping, since one probably already exists.  It could easily just be a list.
-		private Perceptron buildPerceptronEvenWeights(IEnumerable<IGrouping<int, LabeledInstance>> groupsByLabel, HashSet<int> positiveClasses, int[] groupSizes, int dimension){
-			TupleStruct<double[], int, double>[] perceptronTrainingData = groupsByLabel.SelectMany(
-				grp => grp.Select (instance => new TupleStruct<double[], int, double>(instance.values, (positiveClasses.Contains(grp.Key) ? 1 : -1), 1.0 / groupSizes[grp.Key]))
-			).ToArray();
+		private double storedGaussian = Double.NaN;
+		private double gaussian(Random r){
+		//	void RandVal (double mean1, double sigma1, double *rand1, double mean2, double sigma2, double *rand2)
+		//{
+			if(!Double.IsNaN(storedGaussian)){
+				double ret = storedGaussian;
+				storedGaussian = Double.NaN;
+				return ret;
+			}
+			double u1, u2, v1, v2, s;
 
-			Perceptron p = new Perceptron(dimension); 
-			p.Train (perceptronTrainingData);
-			return p;
+			do {
+			    u1 = r.NextDouble ();  // a uniform random number from 0 to 1
+			    u2 = r.NextDouble ();
+			    v1 = 2.0*u1 - 1.0;
+			    v2 = 2.0*u2 - 1.0;
+			    s = v1*v1 + v2*v2;
+			} while (s > 1.0 || s==0.0);
+			storedGaussian = Math.Sqrt (-2.0*Math.Log(s)/s)*v1;
+			return Math.Sqrt (-2.0*Math.Log(s)/s)*v2;
+		}
+		private int classesToTake(Random r){
+			if(cloudSizeStDev > 0)
+			{
+				return Math.Max(1, (int)Math.Round (classes.Length / 2.0 - Math.Abs (gaussian (r) * cloudSizeStDev)));
+//				return (int)Math.Floor(classes.Length / 2.0 - Math.Abs (r.NextDouble() * classes.Length / 4.0)); //TODO: GAUSSIAN DISTRIBUTION!
+			}
+			else{
+				return classes.Length / 2;
+			}
 		}
 		
+		private Perceptron buildPerceptronForAllData(IEnumerable<TupleStruct<double[], int>> trainingData, HashSet<int> positiveClasses, int dimension){
+			Perceptron perceptron = new Perceptron(dimension, normalizePerceptrons);
+			perceptron.Train(trainingData.Select (item => new TupleStruct<double[], int>(item.Item1, positiveClasses.Contains (item.Item2) ? 1 : -1)).ToArray());
+
+			return perceptron;
+		}
 		
 		private Perceptron buildPerceptronEvenClassSizes(IEnumerable<IGrouping<int, LabeledInstance>> groupsByLabel, HashSet<int> positiveClasses, int minClassSize, int dimension){
 
@@ -257,18 +309,20 @@ namespace TextCharacteristicLearner
 			TupleStruct<double[], int>[] negativeData = groupsByLabel.Where (grp => !positiveClasses.Contains(grp.Key)).Flatten1().Shuffle ().Take (minClassSize * positiveClasses.Count)
 			*/
 
-			Perceptron p = new Perceptron(dimension); 
+			Perceptron p = new Perceptron(dimension, normalizePerceptrons);
 			p.Train (perceptronTrainingData);
 			return p;
 		}
 
-		private TupleStruct<Perceptron, int[]> buildPerceptronForRandomClasses(IEnumerable<TupleStruct<double[], int>> trainingData, int dimension){
-			int[] positiveClasses = trainingData.Select (item => item.Item2).Distinct ().Take (classes.Length / 2).ToArray ();
-			HashSet<int> positiveClassesHash = new HashSet<int>(positiveClasses);
-			Perceptron perceptron = new Perceptron(dimension);
-			perceptron.Train(trainingData.Select (item => new TupleStruct<double[], int>(item.Item1, positiveClassesHash.Contains (item.Item2) ? 1 : -1)).ToArray());
+		//Here we take in an IGrouping, since one probably already exists.  It could easily just be a list.
+		private Perceptron buildPerceptronEvenWeights(IEnumerable<IGrouping<int, LabeledInstance>> groupsByLabel, HashSet<int> positiveClasses, int[] groupSizes, int dimension){
+			TupleStruct<double[], int, double>[] perceptronTrainingData = groupsByLabel.SelectMany(
+				grp => grp.Select (instance => new TupleStruct<double[], int, double>(instance.values, (positiveClasses.Contains(grp.Key) ? 1 : -1), 1.0 / groupSizes[grp.Key]))
+			).ToArray();
 
-			return new TupleStruct<Perceptron, int[]>(perceptron, positiveClasses);
+			Perceptron p = new Perceptron(dimension, normalizePerceptrons);
+			p.Train (perceptronTrainingData);
+			return p;
 		}
 
 		public double[] Classify(double[] values){
@@ -298,13 +352,6 @@ namespace TextCharacteristicLearner
 
 
 			return result.NormalizeSumInPlace ();
-		}
-
-		public PerceptronCollection (double extraFactor = 2.0, PerceptronTrainingMode trainingMode = PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode classificationMode = PerceptronClassificationMode.NOFLAGS)
-		{
-			this.perceptronCountFactor = extraFactor;
-			this.trainingMode = trainingMode;
-			this.classificationMode = classificationMode;
 		}
 
 		public override string ToString(){

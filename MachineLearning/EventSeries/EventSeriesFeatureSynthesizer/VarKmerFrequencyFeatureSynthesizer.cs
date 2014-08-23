@@ -164,6 +164,36 @@ namespace TextCharacteristicLearner
 			//Parallelized (find characteristic kmers for each class in parallel)
 
 			IEnumerable<TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>>> characteristicKmers = Enumerable.Range(0, classCount).AsParallel ().Select(index => new TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>> (index, ExtractCharacteristicKmersForClass(index, classes[index].Item2, baseline)));
+			
+			//Discard empty features.
+			if(discardEmptyFeatures){
+				characteristicKmers = characteristicKmers.ToArray ();
+				bool[] classFound = new bool[classCount];
+				int foundCount = 0;
+				foreach(var v in characteristicKmers){
+					if(!classFound[v.Item1]){
+						classFound[v.Item1] = true;
+						foundCount++;
+						if(foundCount == classCount) break;
+					}
+				}
+				if(foundCount < classCount){
+					string[] newClasses = classes.Where ((@class, index) => classFound[index]).Select (@class => @class.Item1).ToArray ();
+					Dictionary<string, int> newClassLookup = newClasses.IndexLookupDictionary();
+
+					int[] oldToNewMapping = new int[classes.Length];
+					foreach(string s in classes.Select (@class => @class.Item1)){
+						oldToNewMapping[classLookup[s]] = newClassLookup.GetWithDefault (s, 0);
+					}
+
+					characteristicKmers = characteristicKmers.Select (kmer =>
+						new TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>>
+						(oldToNewMapping[kmer.Item1], kmer.Item2));
+					//classes = newClasses; //TODO: May need this for negative kmers.
+					classLookup = newClassLookup;
+					classCount = foundCount;
+				}
+			}
 
 			//This part probably can't be parallelized (adding to same dictionary), but should be light
 			learnedCharacteristicKmers = new Dictionary<Kmer<Ty>, Dictionary<int, double>>();
@@ -185,7 +215,6 @@ namespace TextCharacteristicLearner
 
 			//TODO: Negative Kmers (note, may complicate sizing.  Will not work wittout a lot of data.)
 
-			//TODO: Discard empty features.
 		}
 
 		//Extract characteristic kmers (top n more common than baseline that occur at least q times).

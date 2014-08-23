@@ -65,7 +65,6 @@
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\CompoundFeatureSynthesizer.cs" />
     <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\NullProbabalisticClassifier.cs" />
     <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\C45.cs" />
-    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\PerceptronCollection.cs" />
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\LatinLanguageFeatureSynthesizer.cs" />
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\VarKmerFrequencyFeatureSynthesizerToRawFrequencies.cs" />
     <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\EnsembleProbabalisticClassifier.cs" />
@@ -76,6 +75,7 @@
     <Compile Include="MachineLearning\EventSeries\EventSeriesFeatureSynthesizer\TextFeatureSythesizer\DateValueFeatureSynthesizer.cs" />
     <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\ZScoreNormalizerClassifierWrapper.cs" />
     <Compile Include="MultisetHashedKmer.cs" />
+    <Compile Include="MachineLearning\RealVector\ProbabalisticClassifier\PerceptronCloud.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

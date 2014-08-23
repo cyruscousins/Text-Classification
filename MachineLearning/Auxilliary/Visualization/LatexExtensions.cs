@@ -111,7 +111,7 @@ namespace TextCharacteristicLearner
 			Console.WriteLine ("Generated Classifier Accuracy Report.");
 
 			doc.AppendClose ();
-			doc.Write (outFile, s => AsciiOnly(s, true));
+			doc.Write (outFile, s => AsciiOnly(s, true).RegexReplace ("[²½]", ""));
 
 		}
 
@@ -666,6 +666,14 @@ namespace TextCharacteristicLearner
 
 		}
 
+		public static string latexString(string s){
+			return s.RegexReplace(@"([][{}#%_\\])", @"\$1");
+		}
+
+		public static string labelString(string s){
+			return s.RegexReplace (@"[][{}#%_\\]", @""); //TODO: Maybe some of these are ok.
+		}
+
 		public static string FeatureAnalysisLatexString<Ty>(IFeatureSynthesizer<Ty> synth, DiscreteSeriesDatabase<Ty> data, string criterion){
 
 			IEnumerable<DiscreteEventSeries<Ty>> labeledSeries = data.Where (item => item.labels.ContainsKey (criterion)).ToArray ();
@@ -673,6 +681,7 @@ namespace TextCharacteristicLearner
 			//Train the synth on the input data.
 			synth.Train (data); //TODO: This training data is used to create the labeled instances.
 			string[] schema = synth.GetFeatureSchema();
+			string[] latexSchema = schema.Select (item => latexString(item)).ToArray ();
 			string[] classes = labeledSeries.Select (item => item.labels[criterion]).Distinct ().ToArray();
 
 			//Run the synth on all data, synthesize features.
@@ -740,7 +749,7 @@ namespace TextCharacteristicLearner
 
 			Tuple<string, double, double>[] featureAnalysisResults = new Tuple<string, double, double>[schema.Length];
 			for(int i = 0; i < schema.Length; i++){
-				featureAnalysisResults[i] = new Tuple<string, double, double>(schema[i], linearClassificationFeatureUtilities[i], topPerceptronWeights[i]);
+				featureAnalysisResults[i] = new Tuple<string, double, double>(latexSchema[i], linearClassificationFeatureUtilities[i], topPerceptronWeights[i]);
 			}
 
 			/*
@@ -757,7 +766,7 @@ namespace TextCharacteristicLearner
 				"l;c;c;c;c".Split (';'),
 				"Feature Name;Min;Max;Mean;Stdev".Split (';'),
 				Enumerable.Range(0, schema.Length).Select(featureIndex => 
-			        (schema[featureIndex] + @"\label{" + "table:feature:" + criterion + ":" + schema[featureIndex] + "}").Cons(featureStats[featureIndex].Select(item => Double.IsNaN (item) ? colorDouble (Double.NaN) : item.ToString ("G4"))) 
+			        (@"\texttt{" + latexSchema[featureIndex] + "}" + @"\label{" + "table:feature:" + criterion + ":" + labelString (latexSchema[featureIndex]) + "}").Cons(featureStats[featureIndex].Select(item => Double.IsNaN (item) ? colorDouble (Double.NaN) : item.ToString ("G4"))) 
 				)
 			));
 
@@ -799,7 +808,7 @@ namespace TextCharacteristicLearner
 				//"Feature Name;Linear Classification Feature Utility;Maximal Subset Linear Classification Feature Utility".Split (';'),
 				"l|;c;c".Split (';'),
 				"Feature Name;lincfu;maxsublcfu".Split (';'),
-				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{@"\hyperref[" + "table:feature:" + criterion + ":" + item.Item1 + "]{" + item.Item1 + "}", colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
+				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{@"\hyperref[" + "table:feature:" + criterion + ":" + labelString (item.Item1) + "]{" + @"\texttt{" + item.Item1 + "}" + "}", colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
 			if(colsToUse > 1) result.AppendLine (@"\end{multicols}");
 
 			//Bad!

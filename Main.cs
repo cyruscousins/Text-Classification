@@ -74,16 +74,17 @@ namespace TextCharacteristicLearner
 		public static void TestLatex ()
 		{
 
-			bool test = true;
+			bool test = false;
 			bool shorten = true;
-			bool costarica = false;
-			bool cuba = false;
+			bool costarica = true;
+			bool cuba = true;
 
 			if(test){
 				costarica = cuba = false;
 			}
 
 			DiscreteSeriesDatabase<string> allData = LoadRegionsDatabase (test, shorten, costarica, cuba);
+
 
 			/*
 			IFeatureSynthesizer<string> testSynth = new VarKmerFrequencyFeatureSynthesizer<string>("region", 3, 4, 50, 2.0, true);
@@ -111,7 +112,9 @@ namespace TextCharacteristicLearner
 			//IEventSeriesProbabalisticClassifier<string> textClassifier // = TextClassifierFactory.TextClassifier ("region", new[]{"region", "type"});
 
 			//string documentTitle, string author, int width, int height, string outFile, IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>> classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify
-			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.RegionsTestClassifiers().ToArray ();
+			//IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.RegionsTestClassifiers().ToArray ();
+			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.RegionsPerceptronTestClassifiers().ToArray ();
+
 			IFeatureSynthesizer<string> synthesizer = new CompoundFeatureSynthesizer<string>(
 				"region",
 				new IFeatureSynthesizer<string>[]{
@@ -129,7 +132,7 @@ namespace TextCharacteristicLearner
 
 
 
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers.ToArray (), "Spanish Language", allData, "region", test ? 1 : 16, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers.ToArray (), "Spanish Language", allData, "region", test ? 1 : 4, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
 
 			/*
 			if (classifier is SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>) {

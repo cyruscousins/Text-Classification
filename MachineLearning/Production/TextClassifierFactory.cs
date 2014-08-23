@@ -37,7 +37,7 @@ namespace TextCharacteristicLearner
 			);
 
 
-			IProbabalisticClassifier classifier = new PerceptronCollection(32.0);
+			IProbabalisticClassifier classifier = new PerceptronCloud(32.0);
 			//IProbabalisticClassifier classifier = new ProbabalisticKNN(5, ProbabalisticKNN.WEIGHT_INVERSE_DISTANCE_SQUARED);
 
 			IEventSeriesProbabalisticClassifier<string> eventSeriesClassifier = new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(synthesizer, classifier);
@@ -59,7 +59,7 @@ namespace TextCharacteristicLearner
 
 			IProbabalisticClassifier classifier = new EnsembleProbabalisticClassifier(
 				new IProbabalisticClassifier[]{
-					new PerceptronCollection(4.0),
+					new PerceptronCloud(4.0),
 					new ZScoreNormalizerClassifierWrapper(new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA))
 				}
 			);
@@ -98,7 +98,7 @@ namespace TextCharacteristicLearner
 									new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 3, 50, 2.0, false)
 								}
 							),
-							new PerceptronCollection(factor, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.USE_NEGATIVES)
+							new PerceptronCloud(factor, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.USE_NEGATIVES)
 						)
 				    )
 				});
@@ -130,7 +130,7 @@ namespace TextCharacteristicLearner
 					        new VarKmerFrequencyFeatureSynthesizer<string>("type", 3, 4, 50, 2.0, false),
 						}
 					),
-					new PerceptronCollection(16.0, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.USE_NEGATIVES)
+					new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.USE_NEGATIVES)
 				);
 			
 			IEventSeriesProbabalisticClassifier<string> evenKnnBasedClassifier = 
@@ -242,10 +242,10 @@ namespace TextCharacteristicLearner
 							//new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA)),
 							new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES),
 							new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE, KnnTrainingMode.TRAIN_ALL_DATA),
-							new PerceptronCollection(4.0),
-							new PerceptronCollection(4.0, classificationMode: PerceptronClassificationMode.USE_NEGATIVES),
-							new PerceptronCollection(4.0, classificationMode: PerceptronClassificationMode.USE_SCORES),
-							new PerceptronCollection(4.0, classificationMode: PerceptronClassificationMode.USE_SCORES | PerceptronClassificationMode.USE_NEGATIVES)
+							new PerceptronCloud(4.0),
+							new PerceptronCloud(4.0, classificationMode: PerceptronClassificationMode.USE_NEGATIVES),
+							new PerceptronCloud(4.0, classificationMode: PerceptronClassificationMode.USE_SCORES),
+							new PerceptronCloud(4.0, classificationMode: PerceptronClassificationMode.USE_SCORES | PerceptronClassificationMode.USE_NEGATIVES)
 						}
 					)
 				);
@@ -324,9 +324,14 @@ namespace TextCharacteristicLearner
 		public static IEnumerable<Tuple<string, IProbabalisticClassifier>> EnumeratePerceptrons(double oversamplingFactor){
 			foreach(PerceptronTrainingMode trainingMode in PerceptronTrainingMode.GetValues(typeof(PerceptronTrainingMode))){
 				foreach(PerceptronClassificationMode classificationMode in PerceptronClassificationMode.GetValues(typeof(PerceptronClassificationMode))){
-					yield return new Tuple<string, IProbabalisticClassifier>(
-						("Perceptron: t: " + trainingMode.ToString() + ", c: " + classificationMode.ToString()).Replace ("_", " "),
-						new PerceptronCollection(oversamplingFactor, trainingMode, classificationMode));
+					foreach(bool normalize in new[]{false}){
+//					foreach(bool normalize in new[]{true, false}){
+						foreach(double dist in new[]{0, 1, 2}){
+							yield return new Tuple<string, IProbabalisticClassifier>(
+								("Perceptron Cloud: t: " + trainingMode.ToString() + ", c: " + classificationMode.ToString() + ", " + "dist: " + dist + (normalize ? " (normalized out)" : "")).Replace ("_", " "),
+								new PerceptronCloud(oversamplingFactor, trainingMode, classificationMode, dist, normalize));
+						}
+					}
 				}
 			}
 		}
@@ -339,7 +344,7 @@ namespace TextCharacteristicLearner
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
-					new PerceptronCollection(8.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES)
+					new PerceptronCloud(8.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES)
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
@@ -348,7 +353,7 @@ namespace TextCharacteristicLearner
 						new DateValueFeatureSynthesizer("date"),
 						new LatinLanguageFeatureSynthesizer("author")
 					}),
-					new PerceptronCollection(8.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES)
+					new PerceptronCloud(8.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES)
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
@@ -364,8 +369,8 @@ namespace TextCharacteristicLearner
 							//TODO:
 							//new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES),
 							
-							new PerceptronCollection(4.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES),
-							new PerceptronCollection(4.0, PerceptronTrainingMode.TRAIN_EVEN_SIZE, PerceptronClassificationMode.NOFLAGS)
+							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES),
+							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_EVEN_SIZE, PerceptronClassificationMode.NOFLAGS)
 						}
 					)
 				),
