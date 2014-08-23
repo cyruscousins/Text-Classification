@@ -33,6 +33,7 @@ namespace TextCharacteristicLearner
 		public string[] datasetSchemaTextRotated;
 
 		//Classifications
+		//Name, true class, predicted class, scores, winning score;
 		public List<Tuple<string, string, string, double[], double>> classificationInstances;
 
 		//Confusion matrices
@@ -267,7 +268,7 @@ namespace TextCharacteristicLearner
 				result.AppendLine (LatexExtensions.latexLongTableString (
 					"l|l|".Cons(Enumerable.Range(0, topnClasses).Select(i => "c")),
 					"Instance Name;True Class".Split (';').Concat(Enumerable.Range(0, topnClasses).Select(i => LatexExtensions.ordinal ((i + 1), true))),
-					classificationInstances.OrderByDescending(tuple => tuple.Item5). /* Take (topnItems). */ Select (
+					classificationInstances.OrderByDescending(tuple => tuple.Item5).ThenByDescending (tuple => tuple.Item1).Take (topnItems).Select (
 					item => new[]{LatexExtensions.limitLength (item.Item1, 25), LatexExtensions.limitLength (item.Item2, 25)}.Concat (item.Item4.Select ((score, index) => new Tuple<double, string, string>(score, datasetSchema[index], datasetSchemaText[index])).OrderByDescending (tup => tup.Item1).Take (topnClasses).Select ((final, index) => ((final.Item2 == item.Item2) ? final.Item3 : @"\textcolor[rgb]{" + (.9 * 3 / (3 + index)) + "," + (.1 * 3 / (3 + index)) + "," + (.1 * 3 / (3 + index)) + "}{ " + final.Item3 + "}") + @":" + LatexExtensions.colorPercent (final.Item1)))
 					)
 				));
@@ -280,7 +281,7 @@ namespace TextCharacteristicLearner
 				result.AppendLine (LatexExtensions.latexLongTableString (
 					"l;c;c".Split (';').Concat (datasetSchemaText.Select(item => "c")),
 					"Instance Name;True Class;Predicted Class".Split (';').Concat (datasetSchemaText),
-					classificationInstances.OrderByDescending (tuple => tuple.Item5).Select (
+					classificationInstances.OrderByDescending (tuple => tuple.Item5).ThenByDescending (tuple => tuple.Item1).Select (
 					item => new string[]{LatexExtensions.limitLength (item.Item1, 16), item.Item2, (item.Item3 == item.Item2) ? item.Item3 : (@"\textcolor[rgb]{.9,.1,.1}{" + item.Item3 + "}")}.Concat<string>(item.Item4.Select (val => LatexExtensions.colorDouble(val)))
 					)
 				));
@@ -292,7 +293,7 @@ namespace TextCharacteristicLearner
 
 			result.AppendLine (subsubsection + "{True vs. Predicted Class Distributions (Classifier Accuracy)}");
 
-			result.AppendLine ("Although it is one of the most basic metrics for classifier accuracy, candycane.AppendLineing the true and predicted class distribution is an excellent way to detect a classifier biased toward or against a particular class.");
+			result.AppendLine ("Although it is one of the most basic metrics for classifier accuracy, comparing the true and predicted class distribution is an excellent way to detect a classifier biased toward or against a particular class.");
 			result.AppendLine ("Confusion matrices and other techniques become necessary when the bias becomes more subtle, as in the case where instances of one particular class are often confused for instances of another.");
 
 			

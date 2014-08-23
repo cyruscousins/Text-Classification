@@ -343,7 +343,7 @@ namespace TextCharacteristicLearner
 
 				result.AppendLine (significantCorrelations.FoldToString (
 					corr => 
-						"Class " + corr.Item1 + ":" + corr.Item2 + "(" + corr.Item7 + ")" + " is " + quantificationAdverbPhrase(Math.Pow (Math.Abs (corr.Item5 - corr.Item6), 1.5)) +
+						"Class " + corr.Item1 + ":" + corr.Item2 + "(" + corr.Item7 + ")" + " is " + quantificationAdverbPhrase(Math.Pow (Math.Abs (corr.Item5 - corr.Item6), .9)) +
 						"" + ((corr.Item5 < corr.Item6) ? "under" : "over") + " represented in class " + corr.Item3 + ":" + corr.Item4 + "(" + corr.Item8 + ").  " + "(Found " + colorPercent(corr.Item5) + ", expected " + colorPercent (corr.Item6) + ").",
 					@"\item ", "", "\n\\item "));
 
@@ -757,7 +757,7 @@ namespace TextCharacteristicLearner
 				"l;c;c;c;c".Split (';'),
 				"Feature Name;Min;Max;Mean;Stdev".Split (';'),
 				Enumerable.Range(0, schema.Length).Select(featureIndex => 
-			        schema[featureIndex].Cons(featureStats[featureIndex].Select(item => Double.IsNaN (item) ? colorDouble (Double.NaN) : item.ToString ("G4"))) 
+			        (schema[featureIndex] + @"\label{" + "table:feature:" + criterion + ":" + schema[featureIndex] + "}").Cons(featureStats[featureIndex].Select(item => Double.IsNaN (item) ? colorDouble (Double.NaN) : item.ToString ("G4"))) 
 				)
 			));
 
@@ -799,7 +799,7 @@ namespace TextCharacteristicLearner
 				//"Feature Name;Linear Classification Feature Utility;Maximal Subset Linear Classification Feature Utility".Split (';'),
 				"l|;c;c".Split (';'),
 				"Feature Name;lincfu;maxsublcfu".Split (';'),
-				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{item.Item1, colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
+				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{@"\hyperref[" + "table:feature:" + criterion + ":" + item.Item1 + "]{" + item.Item1 + "}", colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
 			if(colsToUse > 1) result.AppendLine (@"\end{multicols}");
 
 			//Bad!
