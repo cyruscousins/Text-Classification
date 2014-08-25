@@ -148,14 +148,16 @@ namespace TextCharacteristicLearner
 
 		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst Report;Posr Report;Post Reoprt;Post Repoert;Post Report;Post Repo-rt;POST REPORT;POST REPORT \'environmental Laws Adequate, Implementation Weak\';POST REPORT P\';POST REPORT, POST REPORT;Post Repot;Post Reprot;Post Rerport;Post Roport;Post Team;PR;Pr);(pr);PR, PR;RSS;;Rss.;(rss;(rss)".Split (';'));
 		private static Dictionary<string, string> manualRenames = 
-			"Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
+			"Dr Sudhamshu K C:Dr Sudhamshu K.c.;Shrsisti_Shrestha;Shristi_Shrestha;Thomas_L._Friedman;Thomas_L_Friedman;William_Pfaff:William_Pfaf;Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 			//new Dictionary<string, string>();
+		private static Dictionary<string, string> manualLocationRenames =
+			"KATHMANDDU:KATHMANDU;KATHAMNDU:KATHMANDU".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 
 		public static DiscreteSeriesDatabase<string> getNewsDataset(string size){
 			DiscreteSeriesDatabase<string> data = new DiscreteSeriesDatabase<string> ();
 
 			using (StreamReader keyfile = File.OpenText("../../res/shirish" + size + "key")){
-				keyfile.BaseStream.Seek(-81 * 1000, System.IO.SeekOrigin.End); //avg line is ~81 characters.
+				keyfile.BaseStream.Seek(-81 * 2000, System.IO.SeekOrigin.End); //avg line is ~81 characters.
 				keyfile.ReadLine ();
 //				for(int i = 0; i < 8000; i++) keyfile.ReadLine ();
 				data.LoadTextDatabase ("../../res/shirish" + size + "/", keyfile, 1);
@@ -208,14 +210,14 @@ namespace TextCharacteristicLearner
 			//data = data.SplitDatabase (.1).Item1;
 
 
-			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.NewsTestAdvancedClassifiers();
+			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.NewsTestClassifiers().Concat(TextClassifierFactory.NewsTestAdvancedClassifiers().Skip (1));
 			IFeatureSynthesizer<string> synth = new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
 				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
 				new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 2, 50, 0.1, false),
 				new DateValueFeatureSynthesizer("date"),
 				new LatinLanguageFeatureSynthesizer("author")
 			});
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers.ToArray (), "News", data, "author", 4, new[]{"author", "location", "date"}, synth);
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers.ToArray (), "News", data, "author", 2, new[]{"author", "location", "date"}, synth);
 		}
 
 

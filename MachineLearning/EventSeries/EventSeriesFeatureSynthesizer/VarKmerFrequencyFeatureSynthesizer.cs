@@ -161,7 +161,7 @@ namespace TextCharacteristicLearner
 			IEnumerable<TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>>> characteristicKmers = Enumerable.Range(0, classCount).AsParallel ().Select(index => new TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>> (index, ExtractCharacteristicKmersForClass(index, classes[index].Item2, baseline)));
 
 			//Discard empty features.
-			if(true && discardEmptyFeatures){
+			if( discardEmptyFeatures){
 				characteristicKmers = characteristicKmers.ToArray ();
 				bool[] classFound = new bool[classCount];
 				int foundCount = 0;
@@ -228,6 +228,8 @@ namespace TextCharacteristicLearner
 				System.Environment.Exit (1);
 			}
 			*/
+
+			features.MapInPlace(fname => ClassificationCriterion + ":" + fname); //Add classification criterion to feature names.
 
 		}
 

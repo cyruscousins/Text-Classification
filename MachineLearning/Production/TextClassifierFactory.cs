@@ -277,33 +277,33 @@ namespace TextCharacteristicLearner
 		}
 
 		public static IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> NewsTestClassifiers(){
+			uint k = 3;
+			uint minCutoff = 2;
+			uint kmersToTake = 50;
+			double smoothing = 0.2;
 			IEventSeriesProbabalisticClassifier<string>[] classifiers = new []{
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+					new VarKmerFrequencyFeatureSynthesizer<string>("author", k, minCutoff, kmersToTake, smoothing, false),
 					new NullProbabalisticClassifier()
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 40, 0.1, false),
+					new VarKmerFrequencyFeatureSynthesizer<string>("author", k, minCutoff, kmersToTake - 10, smoothing, false),
 					new NullProbabalisticClassifier()
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 60, 0.1, false),
+					new VarKmerFrequencyFeatureSynthesizer<string>("author", k, minCutoff, kmersToTake + 10, smoothing, false),
 					new NullProbabalisticClassifier()
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 70, 0.1, false),
+					new VarKmerFrequencyFeatureSynthesizer<string>("author", k, minCutoff, kmersToTake, smoothing + 0.1, false),
 					new NullProbabalisticClassifier()
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.2, false),
+					new VarKmerFrequencyFeatureSynthesizer<string>("author", k + 1, minCutoff, kmersToTake, smoothing, false),
 					new NullProbabalisticClassifier()
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 4, 2, 50, 0.1, false),
-					new NullProbabalisticClassifier()
-				),
-				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 1, 50, 0.1, false),
+					new VarKmerFrequencyFeatureSynthesizer<string>("author", k, minCutoff + 1, kmersToTake, smoothing, false),
 					new NullProbabalisticClassifier()
 				),
 			};
@@ -311,7 +311,6 @@ namespace TextCharacteristicLearner
 				"baseline",
 				"fewer features",
 				"more features",
-				"many more features",
 				"more smoothing",
 				"k=4",
 				"no cutoff"
@@ -337,18 +336,21 @@ namespace TextCharacteristicLearner
 		}
 		
 		public static IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> NewsTestAdvancedClassifiers(){
+
+			Func<VarKmerFrequencyFeatureSynthesizer<string>> authorFactory = () => new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.2, false);
+
 			IEventSeriesProbabalisticClassifier<string>[] classifiers = new []{
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+					authorFactory(),
 					new NullProbabalisticClassifier()
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
-					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+					authorFactory(),
 					new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false)
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
-						new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+						authorFactory(),
 						new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 2, 50, 0.1, false),
 						new DateValueFeatureSynthesizer("date"),
 						new LatinLanguageFeatureSynthesizer("author")
@@ -357,7 +359,7 @@ namespace TextCharacteristicLearner
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
-						new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+						authorFactory(),
 						new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 2, 50, 0.1, false),
 						new DateValueFeatureSynthesizer("date"),
 						new LatinLanguageFeatureSynthesizer("author")
@@ -367,7 +369,7 @@ namespace TextCharacteristicLearner
 							//new ZScoreNormalizer(new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES)),
 							//new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA)),
 							//TODO:
-							new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES),
+							//new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES),
 							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_EVEN_SIZE, PerceptronClassificationMode.NOFLAGS, 1.5, false),
 							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false),
 							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.NOFLAGS, 1.5, false),
@@ -378,9 +380,9 @@ namespace TextCharacteristicLearner
 			};
 			string[] names = new string[]{
 				"raw synth output",
-				@"synth to perceptron cloud",
+				"synth to perceptron cloud",
 				"features to perceptron cloud",
-				//"ensemble"
+				"ensemble"
 			};
 
 			return names.Zip(classifiers);

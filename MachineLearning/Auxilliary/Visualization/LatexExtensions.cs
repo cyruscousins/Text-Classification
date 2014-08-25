@@ -28,7 +28,7 @@ namespace TextCharacteristicLearner
 		}
 
 		public void AppendClose(){
-			document.Append ("\\end{document}\n");
+			document.AppendLine (@"\end{document}");
 		}
 
 		public void Write(string path){
@@ -197,18 +197,18 @@ namespace TextCharacteristicLearner
 				criteriaToEnumerate = db.data.SelectMany (item => item.labels.Keys).Distinct ().Where (item => item != "filename");
 			}
 
-			Tuple<string, string[]>[] criterionInformation = db.getLabelCriteria ().Select (criterion => new Tuple<string, string[]> (criterion, db.data.Select (item => item.labels.GetWithDefault (criterion)).Distinct ().Where (val => val != null).Order ().ToArray ())).ToArray ();
+			Tuple<string, string[]>[] criterionInformation = db.getLabelCriteria ().Select (criterion => new Tuple<string, string[]> (criterion, db.data.Select (item => item.labels.GetWithDefault (criterion)).Distinct ().Where (val => val != null).Order ().ToArray ())) /* .Where (tup => tup.Item2.Length > 0) */.ToArray ();
 			int criteriaCount = criterionInformation.Length;
 
 			StringBuilder result = new StringBuilder ();
 
-			result.AppendLine ("The database contains " + englishCountOfString (objName, db.TotalItemCount ()) + " words across " + englishCountOfString ("document", db.data.Count) + ".");
+			result.AppendLine ("The database contains " + englishCountOfString (objName, db.TotalItemCount ()) + " across " + englishCountOfString ("document", db.data.Count) + ".");
 			result.AppendLine ("Documents are labeled along " + englishCountOfString ("criterion", criteriaCount) + ".");
 
 			result.AppendLine (
 				criterionInformation.Select (
-					info => "Classification criterion " + @"\texttt{" + info.Item1 + "}" + " contains " + info.Item2.Length + " categories.  "
-				+ ((info.Item2.Length <= 20) ? ((info.Item2.Length == 1 ? "It is" : "They are") + " " + foldToEnglishList (info.Item2.Select (item => @"\texttt{" + item + "}")) + ".  ") : "")
+					info => "Classification criterion " + latexHyperrefString("enum:criterion:" + info.Item1, latexClassString(info.Item1)) + " contains " + info.Item2.Length + " categories.  "
+				+ ((info.Item2.Length <= 20) ? ((info.Item2.Length == 1 ? "It is" : "They are") + " " + foldToEnglishList (info.Item2.Select (item => latexHyperrefString("enum:criterion:" + info.Item1 + ":class:" + item, latexClassString(item)))) + ".  ") : "")
 			).FoldToString ("", "", "")
 			);
 
@@ -343,7 +343,7 @@ namespace TextCharacteristicLearner
 				result.AppendLine (significantCorrelations.FoldToString (
 					corr => 
 						"Class " + corr.Item1 + ":" + corr.Item2 + "(" + corr.Item7 + ")" + " is " + quantificationAdverbPhrase(Math.Pow (Math.Abs (corr.Item5 - corr.Item6), .9)) +
-						"" + ((corr.Item5 < corr.Item6) ? "under" : "over") + " represented in class " + corr.Item3 + ":" + corr.Item4 + "(" + corr.Item8 + ").  " + "(Found " + colorPercent(corr.Item5) + ", expected " + colorPercent (corr.Item6) + ").",
+						" " + ((corr.Item5 < corr.Item6) ? "under" : "over") + "represented in class " + corr.Item3 + ":" + corr.Item4 + "(" + corr.Item8 + ").  " + "(Found " + colorPercent(corr.Item5) + ", expected " + colorPercent (corr.Item6) + ").",
 					@"\item ", "", "\n\\item "));
 
 				result.AppendLine (@"\end{enumerate}");
