@@ -344,7 +344,7 @@ namespace TextCharacteristicLearner
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
-					new PerceptronCloud(8.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES)
+					new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false)
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
@@ -353,7 +353,7 @@ namespace TextCharacteristicLearner
 						new DateValueFeatureSynthesizer("date"),
 						new LatinLanguageFeatureSynthesizer("author")
 					}),
-					new PerceptronCloud(8.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES)
+					new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false)
 				),
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
@@ -367,10 +367,11 @@ namespace TextCharacteristicLearner
 							//new ZScoreNormalizer(new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES)),
 							//new ZScoreNormalizer(new ProbabalisticKnn(5, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_ALL_DATA)),
 							//TODO:
-							//new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES),
-							
-							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES),
-							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_EVEN_SIZE, PerceptronClassificationMode.NOFLAGS)
+							new ProbabalisticKnn(3, KnnClassificationMode.WEIGHT_INVERSE_DISTANCE_SQUARED, KnnTrainingMode.TRAIN_EVEN_CLASS_SIZES),
+							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_EVEN_SIZE, PerceptronClassificationMode.NOFLAGS, 1.5, false),
+							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false),
+							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.NOFLAGS, 1.5, false),
+							new PerceptronCloud(4.0, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 2, false),
 						}
 					)
 				),
@@ -379,7 +380,7 @@ namespace TextCharacteristicLearner
 				"raw synth output",
 				@"synth to perceptron cloud",
 				"features to perceptron cloud",
-				"ensemble"
+				//"ensemble"
 			};
 
 			return names.Zip(classifiers);

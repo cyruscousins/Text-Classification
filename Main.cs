@@ -25,9 +25,9 @@ namespace TextCharacteristicLearner
 			//testClassifiers();
 
 			//runNewsClassification();
-			//runNewsClassifierDerivation();
+			runNewsClassifierDerivation();
 			//testNews ();
-			TestLatex ();
+			//TestLatex ();
 			//TestBrokenNormalizer();
 
 			//TestNewDesign();
@@ -74,7 +74,7 @@ namespace TextCharacteristicLearner
 		public static void TestLatex ()
 		{
 
-			bool test = false;
+			bool test = true;
 			bool shorten = true;
 			bool costarica = true;
 			bool cuba = true;
@@ -146,28 +146,28 @@ namespace TextCharacteristicLearner
 
 		}
 
-		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst_Report;Posr_Report;Post_Reoprt;Post_Repoert;Post_Report;Post_Repo-rt;POST_REPORT;POST_REPORT_\'environmental_Laws_Adequate,_Implementation_Weak\';POST_REPORT_P\';POST_REPORT,_POST_REPORT;Post_Repot;Post_Reprot;Post_Rerport;Post_Roport;Post_Team;PR;Pr);(pr);PR,_PR;RSS;;Rss.;(rss;(rss)".Replace ("_", @"\_").Split (';'));
+		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst Report;Posr Report;Post Reoprt;Post Repoert;Post Report;Post Repo-rt;POST REPORT;POST REPORT \'environmental Laws Adequate, Implementation Weak\';POST REPORT P\';POST REPORT, POST REPORT;Post Repot;Post Reprot;Post Rerport;Post Roport;Post Team;PR;Pr);(pr);PR, PR;RSS;;Rss.;(rss;(rss)".Split (';'));
 		private static Dictionary<string, string> manualRenames = 
-			//"Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @"\_").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
-			new Dictionary<string, string>();
+			"Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
+			//new Dictionary<string, string>();
 
 		public static DiscreteSeriesDatabase<string> getNewsDataset(string size){
 			DiscreteSeriesDatabase<string> data = new DiscreteSeriesDatabase<string> ();
 
 			using (StreamReader keyfile = File.OpenText("../../res/shirish" + size + "key")){
-				//keyfile.BaseStream.Seek(-70 * 8000, System.IO.SeekOrigin.End);
-				//keyfile.ReadLine ();
+				keyfile.BaseStream.Seek(-81 * 1000, System.IO.SeekOrigin.End); //avg line is ~81 characters.
+				keyfile.ReadLine ();
 //				for(int i = 0; i < 8000; i++) keyfile.ReadLine ();
 				data.LoadTextDatabase ("../../res/shirish" + size + "/", keyfile, 1);
 			}
 
 			//Do some processing on the database
 			foreach(DiscreteEventSeries<string> item in data.data){
-				string author = AsciiOnly(item.labels["author"], false).RegexReplace (@"_+", @"_").RegexReplace (@"(?:[<])|(?:^[_,])|(?:$)|(?:\')|\\", "").RegexReplace (@"([#_$&])", @"\$1");
+				string author = AsciiOnly(item.labels["author"], false).RegexReplace (@"_+", @" ").RegexReplace (@"(?:[<])|(?:^[ ,])|(?:$)|(?:\')|\\", "").RegexReplace (@"([#$&])", @"\$1");
 				author = manualRenames.GetWithDefault (author, author);
 
-				if(author.StartsWith (@"\_")){ //TODO: Why is this not caught by the regex?
-					author = author.Substring (2);
+				if(author.StartsWith (@" ")){ //TODO: Why is this not caught by the regex?
+					author = author.Substring (1);
 				}
 				if(invalidAuthors.Contains (author)){
 					//Console.WriteLine ("REMOVED " + author);
@@ -177,7 +177,9 @@ namespace TextCharacteristicLearner
 					item.labels["author"] = author; //Put the formatting done above back into db
 				}
 
-				item.labels["filename"] = item.labels["filename"].RegexReplace ("([#_$&])", "\\$1");
+				item.labels["filename"] = item.labels["filename"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
+				if(item.labels.ContainsKey ("location"))
+					item.labels["location"] = item.labels["location"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
 			}
 
 			return data;
@@ -207,7 +209,13 @@ namespace TextCharacteristicLearner
 
 
 			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.NewsTestAdvancedClassifiers();
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers.ToArray (), "News", data, "author", 12, new[]{"author", "location", "date"});
+			IFeatureSynthesizer<string> synth = new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
+				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+				new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 2, 50, 0.1, false),
+				new DateValueFeatureSynthesizer("date"),
+				new LatinLanguageFeatureSynthesizer("author")
+			});
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers.ToArray (), "News", data, "author", 4, new[]{"author", "location", "date"}, synth);
 		}
 
 

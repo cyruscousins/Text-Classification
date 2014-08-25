@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 
 using System.Linq;
+using Whetstone;
 
 namespace TextCharacteristicLearner
 {
@@ -31,10 +32,28 @@ namespace TextCharacteristicLearner
 			//TODO: Sharing this data like this may be detrimental.
 			//TODO: Boolean for whether the synthesizer needs to be trained.
 			synthesizer.Train (series);
-			classifier.Train (series.AsParallel().AsOrdered()
+			classifier.Train (series//.AsParallel().AsOrdered() //Parallel causes a bug where not all of the items are always reached.
 				.Where (item => item.labels.ContainsKey (synthesizer.ClassificationCriterion))
 			    .Select (item => new LabeledInstance(item.labels[synthesizer.ClassificationCriterion], synthesizer.SynthesizeFeatures(item)))
 			);
+
+			//There is a bug, this code tests for a failure.
+
+			/*
+			if(classifier is NullProbabalisticClassifier){
+				string[] synthFeatures = synthesizer.GetFeatureSchema();
+				string[] classifierClasses = classifier.GetClasses();
+
+				if(synthFeatures.Length != classifierClasses.Length || !synthFeatures.Zip (classifierClasses, (s, c) => (s == c)).Conjunction()){
+					Console.WriteLine ("A catastrophic error has occured.  Feature schema:");
+					Console.WriteLine (synthFeatures.FoldToString ());
+					Console.WriteLine ("But classifier (NullProbabalisticClassifier):");
+					Console.WriteLine (classifierClasses.FoldToString ());
+					Console.WriteLine ("Training Data:");
+					Console.WriteLine (series.FoldToString (item => item.labels.GetWithDefault (synthesizer.ClassificationCriterion, "[none]")));
+				}
+			}
+			*/
 		}
 		
 		public double[] Classify(DiscreteEventSeries<Ty> series){

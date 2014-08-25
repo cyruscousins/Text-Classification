@@ -186,6 +186,13 @@ namespace TextCharacteristicLearner
 //			modelString.AppendLine (@"\begin{easylist}[itemize]");
 			modelString.AppendLine (@"\begin{description}");
 
+			/*
+			//TODO: This concept doesn't really exist in code yet, except in a feature synthesizer, where it really shouldn't.
+			if(model is IEventSeriesProbabalisticClassifier<var>){
+				modelString.AppendLine ("Classifying along " + @"\texttt{" + ((IEventSeriesProbabalisticClassifier<var>)model).Class)
+			}
+			*/
+
 			if (algorithmParameters.Any ()) {
 				modelString.AppendLine (@"\item[Algorithm Parameters] \hfill \\");
 				//TODO: Generic parameters on this one?

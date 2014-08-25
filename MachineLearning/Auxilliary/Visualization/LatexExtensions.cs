@@ -73,14 +73,15 @@ namespace TextCharacteristicLearner
 
 			foreach(ClassifierAccuracyAnalysis<Ty> classifierAnalysis in analyses){
 				doc.Append (@"\section{Classifier " + classifierAnalysis.classifierName + "}");
-				doc.Append (@"\label{sec:classifier " + classifierAnalysis.classifierName + "}");
+				doc.Append (LatexExtensions.latexLabelString("sec:classifier " + classifierAnalysis.classifierName));
 				doc.Append (classifierAnalysis.classifier.ClassifierLatexString(classifierAnalysis.classifierName, (int)((width - 1.6) * 13.5)));
 				doc.Append (classifierAnalysis.latexAccuracyAnalysisString(@"\subsection", @"\subsubsection"));
 			}
 
 
 			doc.AppendClose ();
-			doc.Write (outFile, s => AsciiOnly(s, true)); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
+			
+			doc.Write (outFile, s => AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", "")); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
 			
 		}
 
@@ -111,11 +112,9 @@ namespace TextCharacteristicLearner
 			Console.WriteLine ("Generated Classifier Accuracy Report.");
 
 			doc.AppendClose ();
-			doc.Write (outFile, s => AsciiOnly(s, true).RegexReplace ("[²½]", ""));
+			doc.Write (outFile, s => AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", ""));
 
 		}
-
-
 
 		public static string AsciiOnly(string input, bool includeExtendedAscii)
 		{
@@ -233,7 +232,7 @@ namespace TextCharacteristicLearner
 				foreach (DiscreteEventSeries<Ty> item in dbInstances) {
 					result.AppendLine ("\\item " + item.labels ["filename"] + " (" + englishCountOfString (objName, item.data.Length) + ")" 
 						+ " $\\in$ " + foldToEnglishList (item.labels.Keys.Where (key => key != "filename").Select (key => key + ":" + item.labels [key])) + ".  ``"
-						+ seriesToSafeString (item, firstN) + "''." + @"\label{" + "enum:dsoverview:" + item.labels["filename"] + "}"
+						+ seriesToSafeString (item, firstN) + "''." + latexLabelString ("enum:dsoverview:" + item.labels["filename"])
 					);
 				}
 				result.Append ("\\end{enumerate}\n");
@@ -256,13 +255,13 @@ namespace TextCharacteristicLearner
 
 				foreach(string key in criteriaToEnumerate.OrderBy (item => item)){
 					result.AppendLine (@"\item " + key + "(" + dbInstances.Where (item => item.labels.ContainsKey (key)).Count() + " labeled entries):");
-					result.AppendLine (@"\label{" + "enum:criterion:" + key + "}");
+					result.AppendLine (latexLabelString ("enum:criterion:" + key ));
 					result.AppendLine (@"\begin{enumerate}[I.]");
 					result.AppendLine (dbInstances.GroupBy (item => item.labels.GetWithDefault(key, "\\texttt{none}")) //Group by category
 					    .OrderBy (item => item.Key == "\\texttt{none}" ? 1 : 0).ThenBy (item => item.Key) //Order by name, with none last
 						.FoldToString (item => item.Key + " (" + item.Count() + " entries, " + englishCountOfString(objName, item.Select (subitem => subitem.data.Length).Sum()) + ")\n" //Count words per category;
-					   		+ @"\label{" + "enum:criterion:" + key + ":class:" + item.Key + "}"
-					    	+ item.FoldToString (subitem => @"\hyperref[" + "enum:dsoverview:" + subitem.labels["filename"] + "]{" + subitem.labels["filename"] + "}" + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
+					   		+ latexLabelString ("enum:criterion:" + key + ":class:" + item.Key)
+					    	+ item.FoldToString (subitem => latexHyperrefString("enum:dsoverview:" + subitem.labels["filename"], subitem.labels["filename"]) + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
 					result.AppendLine (@"\end{enumerate}");
 				}
 				result.AppendLine (@"\end{enumerate}");
@@ -290,7 +289,7 @@ namespace TextCharacteristicLearner
 				"l |".Cons (Enumerable.Range (0, 6).Select (i => "c")), //Format
 				@"Criterion Name;Class Count;Min Class Size\tablefootnote{All class sizes refer to instance counts, not sum event counts.  See the following subsection for detailed reports on event counts by class.};Max Class Size;Mean Class Size;Stdev Class Size".Split (';'), //Header
 			    dataByCriterionAndClass.Select (row => new[]{
-					@"\hyperref[enum:criterion:" + row.Item1 + "]{" + row.Item1 + "}", 
+					latexHyperrefString("enum:criterion:" + row.Item1, row.Item1), 
 					row.Item2.Length.ToString (), 
 					row.Item2.Select (@class => @class.Item2.Length).Min ().ToString (), 
 					row.Item2.Select (@class => @class.Item2.Length).Max ().ToString (), 
@@ -371,7 +370,7 @@ namespace TextCharacteristicLearner
 					new[]{@"\textbf{Average Class}", meanInstanceCount.ToString (formatString),  (totalWordCount / (double)classCount).ToString (formatString), (totalWordCount / (double)totalInstanceCount).ToString (formatString)}.Cons ( //All row
 						Enumerable.Range (0, classCount).Select (classIndex => 
 					    	new[]{
-								@"\hyperref[" + "enum:criterion:" + criterionData.Item1 + ":class:" + criterionData.Item2[classIndex].Item1 + "]{" + criterionData.Item2[classIndex].Item1 + "}",
+								latexHyperrefString("enum:criterion:" + criterionData.Item1 + ":class:" + criterionData.Item2[classIndex].Item1, criterionData.Item2[classIndex].Item1),
 								instanceCounts[classIndex].ToString (),
 								wordCounts[classIndex].ToString (),
 								(wordCounts[classIndex] / (double) instanceCounts[classIndex]).ToString (formatString)
@@ -426,18 +425,13 @@ namespace TextCharacteristicLearner
 
 			result.Append ("\\subsection{" + "Classifier Parameters and Trained Model Report" + "}\n");
 			
-			result.Append (@"\label{sec:classifier:model " + classifierName + "}");
+			result.Append (latexLabelString ("sec:classifier:model " + classifierName));
 			
 			//result.AppendLine ("Here relevant information is provided on the classifier used to generate the report.");
 			//result.AppendLine ("Generally speaking, the type of the classifier and all parameters are given in the first line, and a complete report of all information learned from training data follows."); // "\\footnote{On a technical note, the reason for the clear difference in representation quality between this section and the remainder of the report is that this section is generated from a string produced by implemetations of the \\texttt{IEventSeriesProbabalisticClassifier<string>} interface, whereas the remaining sections involving the classifier use only the public contract to obtain their data.}");
 
 
 			//string fsynthstr = WordWrap(classifier.ToString (), lineCols);
-
-			//TODO: Escape?
-			//Package inputenc Error: Unicode char \u8:² not set up for use with LaTeX.
-
-			//TODO: Make this less bad.
 
 			/*
 			result.Append ("\\begin{verbatim}\n");
@@ -463,7 +457,6 @@ namespace TextCharacteristicLearner
 
 		public static string ClassifierComparisonLatexString<Ty>(ClassifierAccuracyAnalysis<Ty>[] analyses)
 		{
-
 			
 			//Shared confusion matrix calculation:
 			int classifierCount = analyses.Count ();
@@ -512,7 +505,7 @@ namespace TextCharacteristicLearner
 				new[]{
 					new Tuple<string, double> (@"\textcolor[gray]{0.2}{E$[$Random Selection$]$}", analyses [0].expectedAccuracyRandom),
 					new Tuple<string, double> (@"\textcolor[gray]{0.2}{Top Class Selection}", analyses [0].topClassSelectionAccuracy)
-				}.Concat (analyses.Zip (classifierColorers, (analysis, colorer) => new Tuple<string, double> (@"\hyperref[sec:classifier " + analysis.classifierName + "]{" + colorer (analysis.classifierName) + "}", analysis.overallAccuracy))).OrderByDescending (tup => tup.Item2).Select ((tup, index) => new[] {
+				}.Concat (analyses.Zip (classifierColorers, (analysis, colorer) => new Tuple<string, double> (latexHyperrefString("sec:classifier " + analysis.classifierName, colorer (analysis.classifierName)), analysis.overallAccuracy))).OrderByDescending (tup => tup.Item2).Select ((tup, index) => new[] {
 				tup.Item1,
 				(index + 1).ToString (),
 				LatexExtensions.colorPercent (tup.Item2)
@@ -563,48 +556,6 @@ namespace TextCharacteristicLearner
 
 		public static double fzeroToOne(double d){
 			return (d == 0) ? 1 : d;
-		}
-
-		//COLOR & TEXT
-
-		const string nanString = "--";
-		internal static string colorString(string s, double d){
-			if(d < 0) d = 0;
-			else if(d > 1) d = 1;
-			if(Double.IsNaN (d)) d = .8;
-			double brightness = (1 - d) * 0.85;
-			return @"\textcolor[gray]{" + brightness.ToString (formatString) + "}{" + s + "}";
-		}
-
-		internal static string colorDouble(double d){
-			if(Double.IsNaN(d)) return colorString (nanString, d);
-			else if (Double.IsPositiveInfinity(d))  return @"$\infty$";
-			else if (Double.IsNegativeInfinity (d)) return @"$-\infty$";
-			return colorString(d.ToString (formatString), d);
-		}
-
-		internal static string colorDouble(double val, double outof){
-			//Gets caught down the line as a NaN.
-			/*
- 			if(outof == 0){
-				return "0.000";
-			}
-			*/
-			string valStr;
-			if(Double.IsNaN (val)){
-				valStr = nanString;
-			}
-			else{
-				valStr = val.ToString (formatString);
-			}
-			return colorString (valStr, val / outof);
-		}
-
-		internal static string colorPercent(double d, int places = 2){
-			if(Double.IsNaN(d)) return colorString ("-", .8);
-			double colorVal = Math.Min (1, Math.Abs (d));
-			return colorString ((d * 100).ToString ("F" + places) + @"\%", colorVal);
-
 		}
 
 		public static string ClassifierAccuracyLatexString<Ty> (this IEventSeriesProbabalisticClassifier<Ty> featureSynth, string classifierName, DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
@@ -666,14 +617,6 @@ namespace TextCharacteristicLearner
 
 		}
 
-		public static string latexString(string s){
-			return s.RegexReplace(@"([][{}#%_\\])", @"\$1");
-		}
-
-		public static string labelString(string s){
-			return s.RegexReplace (@"[][{}#%_\\]", @""); //TODO: Maybe some of these are ok.
-		}
-
 		public static string FeatureAnalysisLatexString<Ty>(IFeatureSynthesizer<Ty> synth, DiscreteSeriesDatabase<Ty> data, string criterion){
 
 			IEnumerable<DiscreteEventSeries<Ty>> labeledSeries = data.Where (item => item.labels.ContainsKey (criterion)).ToArray ();
@@ -681,7 +624,6 @@ namespace TextCharacteristicLearner
 			//Train the synth on the input data.
 			synth.Train (data); //TODO: This training data is used to create the labeled instances.
 			string[] schema = synth.GetFeatureSchema();
-			string[] latexSchema = schema.Select (item => latexString(item)).ToArray ();
 			string[] classes = labeledSeries.Select (item => item.labels[criterion]).Distinct ().ToArray();
 
 			//Run the synth on all data, synthesize features.
@@ -749,7 +691,7 @@ namespace TextCharacteristicLearner
 
 			Tuple<string, double, double>[] featureAnalysisResults = new Tuple<string, double, double>[schema.Length];
 			for(int i = 0; i < schema.Length; i++){
-				featureAnalysisResults[i] = new Tuple<string, double, double>(latexSchema[i], linearClassificationFeatureUtilities[i], topPerceptronWeights[i]);
+				featureAnalysisResults[i] = new Tuple<string, double, double>(schema[i], linearClassificationFeatureUtilities[i], topPerceptronWeights[i]);
 			}
 
 			/*
@@ -766,7 +708,7 @@ namespace TextCharacteristicLearner
 				"l;c;c;c;c".Split (';'),
 				"Feature Name;Min;Max;Mean;Stdev".Split (';'),
 				Enumerable.Range(0, schema.Length).Select(featureIndex => 
-			        (@"\texttt{" + latexSchema[featureIndex] + "}" + @"\label{" + "table:feature:" + criterion + ":" + labelString (latexSchema[featureIndex]) + "}").Cons(featureStats[featureIndex].Select(item => Double.IsNaN (item) ? colorDouble (Double.NaN) : item.ToString ("G4"))) 
+			        (@"\texttt{" + latexEscapeString(schema[featureIndex]) + "}" + latexLabelString ("table:feature:" + criterion + ":" + schema[featureIndex])).Cons(featureStats[featureIndex].Select(item => Double.IsNaN (item) ? colorDouble (Double.NaN) : item.ToString ("G4"))) 
 				)
 			));
 
@@ -808,7 +750,7 @@ namespace TextCharacteristicLearner
 				//"Feature Name;Linear Classification Feature Utility;Maximal Subset Linear Classification Feature Utility".Split (';'),
 				"l|;c;c".Split (';'),
 				"Feature Name;lincfu;maxsublcfu".Split (';'),
-				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{@"\hyperref[" + "table:feature:" + criterion + ":" + labelString (item.Item1) + "]{" + @"\texttt{" + item.Item1 + "}" + "}", colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
+				featureAnalysisResults.OrderByDescending(item => item.Item2).Select (item => new[]{latexHyperrefString("table:feature:" + criterion + ":" + item.Item1, @"\texttt{" + item.Item1 + "}"), colorDouble(item.Item2, maxLinearClassificationFeatureUtility), colorDouble (item.Item3)})));
 			if(colsToUse > 1) result.AppendLine (@"\end{multicols}");
 
 			//Bad!
@@ -906,6 +848,83 @@ namespace TextCharacteristicLearner
 		}
 
 
+		////////////
+		//Generate useful latex constructs
+
+		//Strings
+
+		//Escapes latex characters.
+		public static string latexEscapeString(string s){
+			return s.RegexReplace(@"(([^\\])[][{}#%_])", @"$1\$2");
+			//TODO: squared?
+		}
+
+		//Gets rid of non labelable characters
+		public static string latexLabelableString(string s){
+			return s.RegexReplace (@"[][{}#%_\\«»~&]", @""); //TODO: Maybe some of these are ok.
+		}
+
+		public static string latexLabelString(string s){
+			return @"\label{" + latexLabelableString (s) + "}";
+		}
+		
+		public static string latexHyperrefString(string label, string text){
+			return @"\hyperref[" + latexLabelableString(label) + "]{" + text + "}";
+		}
+		
+		public static string latexClassString(string @class){
+			return @"\texttt{" + latexEscapeString(@class) + "}";
+		}
+		public static string latexClassString(string criterion, string @class){
+			return @"\texttt{" + latexEscapeString(criterion) + ":" + latexEscapeString(@class) + "}";
+		}
+
+
+		//Number strings:
+
+		const string nanString = "--";
+		internal static string colorString(string s, double d){
+			if(d < 0) d = 0;
+			else if(d > 1) d = 1;
+			if(Double.IsNaN (d)) d = .8;
+			double brightness = (1 - d) * 0.85;
+			return @"\textcolor[gray]{" + brightness.ToString (formatString) + "}{" + s + "}";
+		}
+
+		internal static string colorDouble(double d){
+			if(Double.IsNaN(d)) return colorString (nanString, d);
+			else if (Double.IsPositiveInfinity(d))  return @"$\infty$";
+			else if (Double.IsNegativeInfinity (d)) return @"$-\infty$";
+			return colorString(d.ToString (formatString), d);
+		}
+
+		internal static string colorDouble(double val, double outof){
+			//Gets caught down the line as a NaN.
+			/*
+ 			if(outof == 0){
+				return "0.000";
+			}
+			*/
+			string valStr;
+			if(Double.IsNaN (val)){
+				valStr = nanString;
+			}
+			else{
+				valStr = val.ToString (formatString);
+			}
+			return colorString (valStr, val / outof);
+		}
+
+		internal static string colorPercent(double d, int places = 2){
+			if(Double.IsNaN(d)) return colorString ("-", .8);
+			double colorVal = Math.Min (1, Math.Abs (d));
+			return colorString ((d * 100).ToString ("F" + places) + @"\%", colorVal);
+
+		}
+
+		//Matrices and tables:
+
+
 		//MATRIX:
 		internal static string latexMatrixString(string envname, bool mathmode, IEnumerable<IEnumerable<string>> data){
 			StringBuilder result = new StringBuilder();
@@ -915,19 +934,12 @@ namespace TextCharacteristicLearner
 			return result.ToString ();
 		}
 
-		internal static string labeledMatrixCorner = "\\cdot";
+		internal static string labeledMatrixCorner = @"\cdot";
 		internal static string latexLabeledMatrixString(string envName, IList<string> labels, IEnumerable<IEnumerable<string>> data){
 			return latexMatrixString (envName, true, labeledMatrixCorner.Cons (labels).Cons (data.Select ((row, index) => labels[index].Cons (row))));
 		}
 
-		/*
-		internal static string latexLabeledMatrixSplitIfNecessary(string envName, IList<string> labels, IEnumerable<IEnumerable<string>> data){
-			string[] labels 
-		}
-		*/
-
 		//TODO: Choice to include single lines.
-		//TODO: Choice to rotate the labels
 		internal static string latexTabularLabeledMatrixString(IList<string> labels, IEnumerable<IEnumerable<string>> data, int angle = 60){
 
 			//Prepend labels onto the first item of data
@@ -973,13 +985,16 @@ namespace TextCharacteristicLearner
 		}
 
 
-		internal static string elipsis = "..."; //"…"; //TODO: Elipsis gets picked up as nonprintable.
+		internal static string elipsis = @"\ldots"; //"…"; //TODO: Elipsis gets picked up as nonprintable.
 		public static string limitLength(string s, int lim){
 			if(s.Length > lim){
 				return (s.Substring (0, lim - 1) + elipsis).Replace (@"\" + elipsis, elipsis); //TODO: Think about this.
 			}
 			return s;
 		}
+
+		////////////
+		//ENCODING:
 
 		//Make the top n words into a safe latex string.
 		internal static string seriesToSafeString<Ty>(DiscreteEventSeries<Ty> series, int n){
@@ -993,6 +1008,37 @@ namespace TextCharacteristicLearner
 		    return new string(asciiChars);
 		}
 
+
+		/////////////////////
+		/// LINE PROCESSING:
+
+		/// <summary>
+		/// Locates position to break the given line so as to avoid
+		/// breaking words.
+		/// </summary>
+		/// <param name="text">String that contains line of text</param>
+		/// <param name="pos">Index where line of text starts</param>
+		/// <param name="max">Maximum line length</param>
+		/// <returns>The modified line length</returns>
+		internal static int BreakLine(string text, int pos, int max)
+		{
+		    // Find last whitespace in line
+		    int i = max;
+		    while (i >= 0 && !Char.IsWhiteSpace(text[pos + i]))
+		        i--;
+
+		    // If no whitespace found, break at maximum length
+		    if (i < 0)
+		        return max;
+
+		    // Find start of whitespace
+		    while (i >= 0 && Char.IsWhiteSpace(text[pos + i]))
+		        i--;
+
+		    // Return length of text before whitespace
+		    return i + 1;
+		}
+		
 		//http://www.codeproject.com/Articles/51488/Implementing-Word-Wrap-in-C
 		
 		/// <summary>
@@ -1043,6 +1089,9 @@ namespace TextCharacteristicLearner
 		    return sb.ToString();
 		}
 
+		////////
+		//ENGLISH:
+
 		public static string foldToEnglishList(IEnumerable<string> list){
 			IEnumerator<string> enumerator = list.GetEnumerator();
 			if(enumerator.MoveNext ()){
@@ -1070,32 +1119,6 @@ namespace TextCharacteristicLearner
 			else{
 				return "";
 			}
-		}
-		/// <summary>
-		/// Locates position to break the given line so as to avoid
-		/// breaking words.
-		/// </summary>
-		/// <param name="text">String that contains line of text</param>
-		/// <param name="pos">Index where line of text starts</param>
-		/// <param name="max">Maximum line length</param>
-		/// <returns>The modified line length</returns>
-		internal static int BreakLine(string text, int pos, int max)
-		{
-		    // Find last whitespace in line
-		    int i = max;
-		    while (i >= 0 && !Char.IsWhiteSpace(text[pos + i]))
-		        i--;
-
-		    // If no whitespace found, break at maximum length
-		    if (i < 0)
-		        return max;
-
-		    // Find start of whitespace
-		    while (i >= 0 && Char.IsWhiteSpace(text[pos + i]))
-		        i--;
-
-		    // Return length of text before whitespace
-		    return i + 1;
 		}
 
 		internal static string[] quantificationAdverbPhrases = "infinitessimally;ever so slightly;a tiny bit;slightly;noticably;somewhat;quite;very;heavily;quite heavily;extremely;near completely".Split(';');
@@ -1273,7 +1296,7 @@ namespace TextCharacteristicLearner
 
 
 		 
-
+		//////////////
 		//COLOR:
 		
 		public static Random rand = new Random();

@@ -63,7 +63,7 @@ namespace TextCharacteristicLearner
 
 		//Get the names of the features being synthesized.
 		public string[] GetFeatureSchema(){
-			return kmersOntoIndex.OrderBy (kmer => kmer.Value).Select (kmer => kmer.Key.ToString ()).ToArray();
+			return kmersOntoIndex.OrderBy (kmer => kmer.Value).Select (kmer => "ClassificationCriterion:" + kmer.Key.ToString ()).ToArray();
 		}
 
 		public bool NeedsTraining{get{return true;}}

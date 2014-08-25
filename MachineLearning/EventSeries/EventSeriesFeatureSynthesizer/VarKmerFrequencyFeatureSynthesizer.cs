@@ -89,9 +89,12 @@ namespace TextCharacteristicLearner
 
 		public string ClassificationCriterion{ get; private set; }
 
+		string[] features;
+
 		//Get the names of the features being synthesized.
 		public string[] GetFeatureSchema(){
-			return classLookup.OrderBy(kvp => kvp.Value).Select (kvp => kvp.Key).ToArray ();
+			return features;
+			//return classLookup.OrderBy(kvp => kvp.Value).Select (kvp => kvp.Key).ToArray ();
 		}
 
 		public bool NeedsTraining{get{return true;}}
@@ -107,14 +110,6 @@ namespace TextCharacteristicLearner
 				.Select (grp => new TupleStruct<string, MultisetKmer<Ty>>(grp.Key, ((IEnumerable<DiscreteEventSeries<Ty>>)grp).ToMultisetVarKmer<Ty> (k))) //Make classes into a single multiset each.
 				.OrderBy (tup => tup.Item1) //Sort by name
 				.ToArray ();
-
-			/*
-			Console.WriteLine("GROUPS");
-			foreach(var v in classes){
-				Console.WriteLine ("Class " + v.Item1 + " size " + v.Item2.Size ());
-			}
-			*/
-
 
 			MultisetKmer<Ty> baseline;
 			if(useUncategorizedForBaseline){
@@ -164,9 +159,9 @@ namespace TextCharacteristicLearner
 			//Parallelized (find characteristic kmers for each class in parallel)
 
 			IEnumerable<TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>>> characteristicKmers = Enumerable.Range(0, classCount).AsParallel ().Select(index => new TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>> (index, ExtractCharacteristicKmersForClass(index, classes[index].Item2, baseline)));
-			
+
 			//Discard empty features.
-			if(discardEmptyFeatures){
+			if(true && discardEmptyFeatures){
 				characteristicKmers = characteristicKmers.ToArray ();
 				bool[] classFound = new bool[classCount];
 				int foundCount = 0;
@@ -192,7 +187,15 @@ namespace TextCharacteristicLearner
 					//classes = newClasses; //TODO: May need this for negative kmers.
 					classLookup = newClassLookup;
 					classCount = foundCount;
+		
+					features = @newClasses.Order ().ToArray ();
 				}
+				else{			
+					features = @classes.Select (@class => @class.Item1).Order ().ToArray ();
+				}
+			}
+			else{
+				features = @classes.Select (@class => @class.Item1).Order ().ToArray ();
 			}
 
 			//This part probably can't be parallelized (adding to same dictionary), but should be light
@@ -213,7 +216,18 @@ namespace TextCharacteristicLearner
 				}
 			}
 
-			//TODO: Negative Kmers (note, may complicate sizing.  Will not work wittout a lot of data.)
+			//TODO: Negative Kmers (note, may complicate sizing.  Will not work without a lot of data.)
+
+			//ERROR STATE (TODO make this an assert, it should never happen).
+			/*
+			if(features.Length != classCount){
+				Console.WriteLine ("A serious error has occured.");
+				Console.WriteLine ("Class Count = " + classCount);
+				Console.WriteLine ("Features = " + features.FoldToString () + ", len = " + features.Length + ")");
+
+				System.Environment.Exit (1);
+			}
+			*/
 
 		}
 

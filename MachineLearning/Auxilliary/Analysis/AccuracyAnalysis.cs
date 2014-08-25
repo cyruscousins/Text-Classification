@@ -205,12 +205,28 @@ namespace TextCharacteristicLearner
 		}
 				
 		//Name, true class, predicted class, scores, winning score;
-		public static Tuple<string, string, string, double[], double> classificationInfo(IEventSeriesProbabalisticClassifier<Ty> featureSynth, string[] classifierSchema, Dictionary<string, int> trueSchemaMapping, DiscreteEventSeries<Ty> data, string nameCriterion, string criterionByWhichToClassify){
+		public static Tuple<string, string, string, double[], double> classificationInfo (IEventSeriesProbabalisticClassifier<Ty> classifier, string[] classifierSchema, Dictionary<string, int> trueSchemaMapping, DiscreteEventSeries<Ty> data, string nameCriterion, string criterionByWhichToClassify)
+		{
 
 			//scores in the synthesizer scorespace
-			double[] synthScores = featureSynth.Classify (data);
+			double[] synthScores = classifier.Classify (data);
 
-			int maxIndex = synthScores.MaxIndex();
+			int maxIndex = synthScores.MaxIndex ();
+
+			/*
+			classifierSchema = classifier.GetClasses();
+			if (maxIndex >= classifierSchema.Length) {
+				Console.WriteLine ("Schema not long enough.  synthlen, max, schema = " + synthScores.Length + ", " + maxIndex + ", " + classifierSchema.Length);
+				Console.WriteLine ("Classifier Info:");
+				Console.WriteLine (classifier.ToString ());
+				Console.WriteLine ("Synth Features:");
+				Console.WriteLine (((SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>)classifier).synthesizer.GetFeatureSchema().FoldToString ());
+				Console.WriteLine ("Classifier Features:");
+				Console.WriteLine (((SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>)classifier).classifier.GetClasses().FoldToString ());
+				return null;
+			}
+			*/
+
 			string predictedClass = classifierSchema[maxIndex];
 			double maxScore = synthScores[maxIndex];
 
@@ -546,7 +562,7 @@ namespace TextCharacteristicLearner
 											.FoldToString("\t\\item ", "", "\t\\item "));
 					result.AppendLine (@"\end{itemize}");
 					if(poorClasses.Length > poorClassesMax){
-						result.AppendLine(@"\textit{Top " + poorClassesMax + " most misclassified classes shown above, " + (poorClasses.Length - poorClassesMax) + " classes omitted.");
+						result.AppendLine(@"\textit{Top " + poorClassesMax + " most misclassified classes shown above, " + (poorClasses.Length - poorClassesMax) + " classes omitted." + "}");
 					}
 
 					result.AppendLine(@"\par\bigskip");
