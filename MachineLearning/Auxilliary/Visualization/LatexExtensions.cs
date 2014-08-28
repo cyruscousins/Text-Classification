@@ -39,83 +39,257 @@ namespace TextCharacteristicLearner
 			File.WriteAllText (path, process(document.ToString ()));
 			//TODO: Invoke latex.
 		}
+
+		public static void WriteLatexDocument(string title, string author, double margin, double width, double height, string body, string path, Func<String, String> process){
+			LatexDocument doc = new LatexDocument(title, author, margin, width, height);
+			doc.Append (body);
+			doc.AppendClose ();
+			doc.Write (path, process);
+		}
 	}
 	
 
+	//TODO: Parallelize the various parts of this function.
 	public static class WriteupGenerator{
 
-		public static void ProduceClassifierComparisonWriteup<Ty> (string documentTitle, string author, double width, double height, string outFile, Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>[] classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds, string[] analysisCriteria = null, IFeatureSynthesizer<Ty> synthesizer = null)
+		public static void ProduceClassifierComparisonWriteup<Ty> (string documentTitle, string author, double width, double height, string outDirectory, Tuple<string, IEventSeriesProbabalisticClassifier<Ty>>[] classifiers, string datasetTitle, DiscreteSeriesDatabase<Ty> dataset, string criterionByWhichToClassify, int classificationRounds, string[] analysisCriteria = null, IFeatureSynthesizer<Ty> synthesizer = null)
 		{
+
+			Console.WriteLine ("Producing classifier comparison report:");
+			
+			string thisPath;
+			LatexDocument thisDoc;
+
+			{
+				string latexProgram = "pdflatex";
+
+				//Create directory and populate with a latex make script.
+				Directory.CreateDirectory (outDirectory);
+				string[] latexFiles = "database;featuresynthesizer;classifiercomparison;classifiers;fullreport".Split (';'); //TODO: Consider featuresynthesizer.  Should it be optional?  If so it's entry in the makefile should be removed when not present.
+				File.WriteAllLines (outDirectory + "make.sh", 
+				    new[]{"#! /bin/bash", "", "bufsize = 10000000"}.Concat (
+					latexFiles.Select (item => latexProgram + " -draftmode " + item + ".tex" + " &")).Concat (
+					new[]{"", "wait", ""}).Concat (
+					latexFiles.Select (item => latexProgram + " " + item + ".tex" + " &")).Concat (
+					new[]{"", "wait", ""}
+				)
+				);
+				//TODO make executable.
+				Console.WriteLine ("Wrote make script.");
+			}
+
 			dataset = dataset.FilterForCriterion (criterionByWhichToClassify);
+			Console.WriteLine ("Filtered dataset for items labeled with criterion \"" + criterionByWhichToClassify + "\"");
 
-			LatexDocument doc = new LatexDocument (documentTitle, author, .8, width, height);
+			string databaseString = dataset.DatabaseLatexString (datasetTitle + " Database Analysis", (analysisCriteria == null) ? new[]{criterionByWhichToClassify} : analysisCriteria, (int)width - 2);
+			Console.WriteLine ("Generated database report string.");
+			{
+				thisDoc = new LatexDocument ("Database Report", author, .8, width, height);
+				thisPath = outDirectory + "database.tex";
+				thisDoc.Append (databaseString);
+				thisDoc.AppendClose ();
+				thisDoc.Write (thisPath, FinalSanitize);
+				Console.WriteLine ("Wrote database report to \"" + thisPath + "\".");
+			}
 
-			doc.Append (@"\part{Problem Analysis}");
-
-			doc.Append (@"\section{Dataset Overview}");
-			doc.Append (dataset.DatabaseLatexString (datasetTitle + " Database Analysis", (analysisCriteria == null) ? new[]{criterionByWhichToClassify} : analysisCriteria, (int)width - 2));
+			string featureSynthesizerString = ""; //Unnecessary initialization.
+			if (synthesizer != null) {
+				featureSynthesizerString = LatexExtensions.FeatureAnalysisLatexString (synthesizer, dataset, criterionByWhichToClassify);
+				Console.WriteLine ("Generated feature synthesizer report string.");
+				{
+					thisDoc = new LatexDocument ("Feature Synthesizer Report", author, .8, width, height);
+					thisPath = outDirectory + "featuresynthesizer.tex";
+					thisDoc.Append (featureSynthesizerString);
+					thisDoc.AppendClose ();
+					thisDoc.Write (thisPath, FinalSanitize);
+					Console.WriteLine ("Wrote feature synthesizer report to \"" + thisPath + "\".");
+				}
+			}
 
 			//Accuracy analysis:
-			ClassifierAccuracyAnalysis<Ty>[] analyses = classifiers.AsParallel ().Select (classifier => new ClassifierAccuracyAnalysis<Ty> (classifier.Item2, classifier.Item1, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ()).OrderByDescending (analysis => analysis.overallAccuracy).ToArray ();
+			//Analysis, classifier string, accuracy analysis string
+			Tuple<ClassifierAccuracyAnalysis<Ty>, string, string>[] analyses = classifiers.AsParallel () //.WithExecutionMode(System.Linq.ParallelExecutionMode.ForceParallelism)
+				.Select (classifier => new ClassifierAccuracyAnalysis<Ty> (
+					classifier.Item2, classifier.Item1, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ()
+			)
+				.Select (analysis => new Tuple<ClassifierAccuracyAnalysis<Ty>, string, string> (
+				    analysis, 
+					analysis.classifier.ClassifierLatexString (analysis.classifierName, (int)((width - 1.6) * 13.5)),
+					analysis.latexAccuracyAnalysisString (@"\subsection", @"\subsubsection"))
+			)
+				.OrderByDescending (tup => tup.Item1.overallAccuracy)
+				.ToArray ();
+			Console.WriteLine ("Accuracy Analysis of all classifiers (" + classifiers.Length + ") complete.");
 
-			if (synthesizer != null) {
-				doc.Append (@"\section{Feature Analysis}");
-				doc.Append (LatexExtensions.FeatureAnalysisLatexString (synthesizer, dataset, criterionByWhichToClassify));
+			string classifierSections;
+			{
+				StringBuilder sb = new StringBuilder ();
+			
+				//Create a section for each classifier.
+				foreach (var classifierAnalysis in analyses) {
+					sb.AppendLine (@"\section{Classifier " + classifierAnalysis.Item1.classifierName + "}");
+					sb.AppendLine (LatexExtensions.latexLabelString ("sec:classifier " + classifierAnalysis.Item1.classifierName));
+					sb.AppendLine (classifierAnalysis.Item2);
+					sb.AppendLine (classifierAnalysis.Item3);
+				}
+				classifierSections = sb.ToString ();
+			}
+			Console.WriteLine ("Generated classifier accuracy report strings.");
+			{
+				thisDoc = new LatexDocument ("Accuracy Report by Classifier", author, .8, width, height);
+				thisPath = outDirectory + "classifiers.tex";
+				thisDoc.Append (featureSynthesizerString);
+				thisDoc.AppendClose ();
+				thisDoc.Write (thisPath, FinalSanitize);
+				Console.WriteLine ("Wrote classifier accuracy report to \"" + thisPath + "\".");
 			}
 
-			doc.Append (@"\part{Classifier Analysis}");
-
-			doc.Append (@"\section{Classifier Comparison}");
-
-			doc.Append (LatexExtensions.ClassifierComparisonLatexString(analyses));
-
-			//Create a section for each classifier.
-
-			foreach(ClassifierAccuracyAnalysis<Ty> classifierAnalysis in analyses){
-				doc.Append (@"\section{Classifier " + classifierAnalysis.classifierName + "}");
-				doc.Append (LatexExtensions.latexLabelString("sec:classifier " + classifierAnalysis.classifierName));
-				doc.Append (classifierAnalysis.classifier.ClassifierLatexString(classifierAnalysis.classifierName, (int)((width - 1.6) * 13.5)));
-				doc.Append (classifierAnalysis.latexAccuracyAnalysisString(@"\subsection", @"\subsubsection"));
+			string classifierComparisonString = LatexExtensions.ClassifierComparisonLatexString (analyses.Select (analysis => analysis.Item1).ToArray ());
+			Console.WriteLine ("Generated classifier comparison string.");
+			{
+				thisDoc = new LatexDocument ("Classifier Comparison Report", author, .8, width, height);
+				thisPath = outDirectory + "classifiers.tex";
+				thisDoc.Append (classifierComparisonString);
+				thisDoc.AppendClose ();
+				thisDoc.Write (thisPath, FinalSanitize);
+				Console.WriteLine ("Wrote classifier comparison report to \"" + thisPath + "\".");
 			}
 
+			//Full Report
+			{
+				thisDoc = new LatexDocument (documentTitle, author, .8, width, height);
+				thisPath = outDirectory + "fullreport.tex";
 
-			doc.AppendClose ();
+				thisDoc.Append (@"\part{Problem Analysis}");
+
+				thisDoc.Append (@"\section{Dataset Overview}");
+				thisDoc.Append (databaseString);
+
+				if (synthesizer != null) {
+					thisDoc.Append (@"\section{Feature Analysis}");
+					thisDoc.Append (featureSynthesizerString);
+				}
+
+				thisDoc.Append (@"\part{Classifier Analysis}");
+
+				thisDoc.Append (@"\section{Classifier Comparison}");
+				thisDoc.Append (classifierComparisonString);
+
+				thisDoc.Append (classifierSections);
+
+				thisDoc.AppendClose ();
 			
-			doc.Write (outFile, s => AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", "")); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
-			
+				thisDoc.Write (thisPath, s => AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", "")); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
+				Console.WriteLine ("Wrote full report to \"" + thisPath + "\"");
+			}
+
 		}
 
-		public static void ProduceClassificationReport<Ty>(string documentTitle, string author, double width, double height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName, DiscreteSeriesDatabase<Ty> dataset, string datasetTitle, string criterionByWhichToClassify){
+		public static void ProduceClassificationReport<Ty> (string documentTitle, string author, double width, double height, string outDirectory, IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName, DiscreteSeriesDatabase<Ty> dataset, string datasetTitle, string criterionByWhichToClassify)
+		{
+
+			Console.WriteLine ("Producing classification report:");
+
+			string thisPath;
+			LatexDocument thisDoc;
+
+			{
+				string latexProgram = "pdflatex";
+
+				//Create directory and populate with a latex make script.
+				Directory.CreateDirectory (outDirectory);
+				string[] latexFiles = "database;classifieroverview;classifications;classifieraccuracy;fullreport".Split (';');
+				File.WriteAllLines(outDirectory + "make.sh", 
+				    new[]{"#! /bin/bash", "", "bufsize = 10000000", "", "rm -f *.aux *.lof *.log *.out *.toc"}.Concat (
+					latexFiles.Select (item => latexProgram + " -draftmode " + item + ".tex" + " &")).Concat (
+					new[]{"", "wait", ""}).Concat (
+					latexFiles.Select (item => latexProgram + " " + item + ".tex" + " &")).Concat (
+					new[]{"", "wait", ""}
+					)
+				);
+				//TODO make executable.
+				Console.WriteLine ("Wrote make script.");
+			}
 			
-			LatexDocument doc = new LatexDocument(documentTitle, author, .8, width, height);
-
-			doc.Append ("\\section{Input Data Overview}\n\n");
-			doc.Append (dataset.DatabaseLatexString(datasetTitle + " Database Analysis", new[]{criterionByWhichToClassify}, (int)(width - 2)));
-
-			Console.WriteLine ("Generated Database Overview.");
+			string databaseString = dataset.DatabaseLatexString (datasetTitle + " Database Analysis", new[]{criterionByWhichToClassify}, (int)(width - 2));
+			Console.WriteLine ("Generated Database Report...");
+			{
+				thisDoc = new LatexDocument ("Database Report", author, .8, width, height);
+				thisPath = outDirectory + "database.tex";
+				thisDoc.Append (databaseString);
+				thisDoc.AppendClose ();
+				thisDoc.Write (thisPath, FinalSanitize);
+				Console.WriteLine ("Wrote database report to \"" + thisPath + "\".");
+			}
 
 			classifier.Train (dataset);
+			Console.WriteLine ("Trained Classifier...");
 
-			doc.Append ("\\section{Feature Synthesizer and Classifier Overview}\n\n");
-			doc.Append (classifier.ClassifierLatexString("Author Classifier", (int)((width - 1.6) * 13)));
+			string classifierString = classifier.ClassifierLatexString ("Author Classifier", (int)((width - 1.6) * 13));
+			Console.WriteLine ("Generated Classifier Overview...");
+			{
+				thisDoc = new LatexDocument ("Database Report", author, .8, width, height);
+				thisPath = outDirectory + "classifieroverview.tex";
+				thisDoc.Append (classifierString);
+				thisDoc.AppendClose ();
+				thisDoc.Write (thisPath, FinalSanitize);
+				Console.WriteLine ("Wrote classifier overview report to \"" + thisPath + "\".");
+			}
 
-			Console.WriteLine ("Generated Classifier Overview.");
+			string classificationReportString = classifier.ClassificationReportLatexString (dataset, criterionByWhichToClassify, 0);
+			Console.WriteLine ("Generated Document Classification Report...");
+			{
+				thisDoc = new LatexDocument ("Classification Report", author, .8, width, height);
+				thisPath = outDirectory + "classifications.tex";
+				thisDoc.Append (classificationReportString);
+				thisDoc.AppendClose ();
+				thisDoc.Write (thisPath, FinalSanitize);
+				Console.WriteLine ("Wrote classification report to \"" + thisPath + "\".");
+			}
+			//TODO classification text file.
 
-			doc.Append ("\\section{Classification Report}\n\n");
-			doc.Append (classifier.ClassificationReportLatexString(dataset, criterionByWhichToClassify, 0));
-			
-			Console.WriteLine ("Generated Classification Report.");
+			string classifierAccuracyReportString = classifier.ClassifierAccuracyLatexString (classifierName, dataset, criterionByWhichToClassify, .8, 2, .05);
+			Console.WriteLine ("Created Classifier Accuracy Report...");
+			{
+				thisDoc = new LatexDocument ("Classifier Accuracy Report", author, .8, width, height);
+				thisPath = outDirectory + "classifieraccuracy.tex";
+				thisDoc.Append (classifierAccuracyReportString);
+				thisDoc.AppendClose ();
+				thisDoc.Write (thisPath, FinalSanitize);
+				Console.WriteLine ("Wrote classifier accuracy report to \"" + thisPath + "\".");
+			}
 
-			doc.Append ("\\section{Classifier Accuracy Report}\n\n");
-			doc.Append (classifier.ClassifierAccuracyLatexString(classifierName, dataset, criterionByWhichToClassify, .8, 8, .05));
-			
-			Console.WriteLine ("Generated Classifier Accuracy Report.");
+			//Full Report
+			{
+				LatexDocument fullReport = new LatexDocument (documentTitle, author, .8, width, height);
 
-			doc.AppendClose ();
-			doc.Write (outFile, s => AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", ""));
+				fullReport.Append ("\\section{Input Data Overview}\n\n");
+				fullReport.Append (databaseString);
 
+				fullReport.Append ("\\section{Feature Synthesizer and Classifier Overview}\n\n");
+				fullReport.Append (classifierString);
+
+				fullReport.Append ("\\section{Classification Report}\n\n");
+				fullReport.Append (classificationReportString);
+
+				fullReport.Append ("\\section{Classifier Accuracy Report}\n\n");
+				fullReport.Append (classifierAccuracyReportString);
+
+				fullReport.AppendClose ();
+				fullReport.Write (outDirectory + "fullreport.tex", FinalSanitize);
+
+				Console.WriteLine ("Wrote full classifier report.");
+			}
+
+			//Run Latex
+
+			//TODO:
+			// execute outDirectory + "make.sh"
 		}
 
+		public static string FinalSanitize(string s){
+			return AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", "");
+		}
 		public static string AsciiOnly(string input, bool includeExtendedAscii)
 		{
 		    int upperLimit = includeExtendedAscii ? 255 : 127;
@@ -155,7 +329,7 @@ namespace TextCharacteristicLearner
 
 \usepackage{graphicx}
 
-\usepackage{hyperref} %TODO: This is causing problems.
+\usepackage{hyperref}
 \usepackage{color}
 
 \usepackage{indentfirst}
@@ -227,7 +401,7 @@ namespace TextCharacteristicLearner
 				int cols = 1; //TODO: Calculate this based on string lengths and page width
 				if (cols > 1) result.AppendLine (@"\begin{multicols}{" + cols + "}");
 				result.AppendLine ("\\begin{enumerate}[1.]");
-				result.AppendLine ("\\itemsep0pt");
+				result.AppendLine ("\\itemsep0pt"); //TODO: Put this in header?
 
 				foreach (DiscreteEventSeries<Ty> item in dbInstances) {
 					result.AppendLine ("\\item " + item.labels ["filename"] + " (" + englishCountOfString (objName, item.data.Length) + ")" 
@@ -260,8 +434,8 @@ namespace TextCharacteristicLearner
 					result.AppendLine (dbInstances.GroupBy (item => item.labels.GetWithDefault(key, "\\texttt{none}")) //Group by category
 					    .OrderBy (item => item.Key == "\\texttt{none}" ? 1 : 0).ThenBy (item => item.Key) //Order by name, with none last
 						.FoldToString (item => item.Key + " (" + item.Count() + " entries, " + englishCountOfString(objName, item.Select (subitem => subitem.data.Length).Sum()) + ")\n" //Count words per category;
-					   		+ latexLabelString ("enum:criterion:" + key + ":class:" + item.Key)
-					    	+ item.FoldToString (subitem => latexHyperrefString("enum:dsoverview:" + subitem.labels["filename"], subitem.labels["filename"]) + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
+					   		+ "  " + latexLabelString ("enum:criterion:" + key + ":class:" + item.Key) + "\n"
+					    	+ item.FoldToString (subitem => latexHyperrefString("enum:dsoverview:" + subitem.labels["filename"], subitem.labels["filename"]) + " (" + subitem.data.Length + " words)", "\\begin{enumerate}[i.]\n  \\item ", "\n\\end{enumerate}\n", "\n  \\item "), "\\item ", "\n" , "\n\\item ")); //Show each item in category.
 					result.AppendLine (@"\end{enumerate}");
 				}
 				result.AppendLine (@"\end{enumerate}");
@@ -775,17 +949,16 @@ namespace TextCharacteristicLearner
 			//filename, prediction class, prediction strength, prediction score vector.
 			//TODO: Make this schema line up with the above as closely as possible.
 
-			//TODO: AsParallel?
-			IEnumerable<Tuple<string, string, double, double[]>> classifications = dataToClassify.data. /* AsParallel(). */ Select (item => 
+			IEnumerable<Tuple<string, string, double, double[]>> classifications = dataToClassify.data.AsParallel().Select (item => 
 				{
 					double[] vals = featureSynth.Classify(item);
 					int maxIndex = vals.MaxIndex();
 					return new Tuple<string, string, double, double[]>(item.labels["filename"], schema[maxIndex], vals[maxIndex], vals);
-				});
+				}).ToArray ();
 
 			Tuple<IEnumerable<Tuple<string, string, double, double[]>>, IEnumerable<Tuple<string, string, double, double[]>>> confidenceSplit = classifications.Partition (item => item.Item3 >= confidenceCutoff);
-			IEnumerable<Tuple<string, string, double, double[]>> significantClassifications = confidenceSplit.Item1;
-			IEnumerable<Tuple<string, string, double, double[]>> insignificantClassifications = confidenceSplit.Item2;
+			Tuple<string, string, double, double[]>[] significantClassifications = confidenceSplit.Item1.ToArray ();
+			Tuple<string, string, double, double[]>[] insignificantClassifications = confidenceSplit.Item2.ToArray ();
 
 			int topNClasses = 5;
 
@@ -799,8 +972,7 @@ namespace TextCharacteristicLearner
 			result.AppendLine ("One can generally be more confident when the primary guess has high value and the remaining guesses do not.");
 			result.AppendLine ();
 
-			significantClassifications = significantClassifications.ToArray ();
-			int significantCount = ((Tuple<string, string, string, double, double>[])significantClassifications).Length;
+			int significantCount = significantClassifications.Length;
 
 			result.AppendLine (latexLongTableString (
 				"l|".Cons(Enumerable.Range(0, topNClasses).Select(i => "c")),
@@ -855,13 +1027,13 @@ namespace TextCharacteristicLearner
 
 		//Escapes latex characters.
 		public static string latexEscapeString(string s){
-			return s.RegexReplace(@"(([^\\])[][{}#%_])", @"$1\$2");
+			return s.RegexReplace(@"(([^\\])[][{}#%_$])", @"$1\$2");
 			//TODO: squared?
 		}
 
 		//Gets rid of non labelable characters
 		public static string latexLabelableString(string s){
-			return s.RegexReplace (@"[][{}#%_\\«»~&]", @""); //TODO: Maybe some of these are ok.
+			return s.RegexReplace (@"[][{}#%_\\«»~&$]", @""); //TODO: Maybe some of these are ok.
 		}
 
 		public static string latexLabelString(string s){

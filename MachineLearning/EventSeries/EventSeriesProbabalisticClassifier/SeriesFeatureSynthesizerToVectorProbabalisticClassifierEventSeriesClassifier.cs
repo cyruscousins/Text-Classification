@@ -34,26 +34,31 @@ namespace TextCharacteristicLearner
 			synthesizer.Train (series);
 			classifier.Train (series//.AsParallel().AsOrdered() //Parallel causes a bug where not all of the items are always reached.
 				.Where (item => item.labels.ContainsKey (synthesizer.ClassificationCriterion))
-			    .Select (item => new LabeledInstance(item.labels[synthesizer.ClassificationCriterion], synthesizer.SynthesizeFeatures(item)))
+			    .Select (item => new LabeledInstance(item.labels[synthesizer.ClassificationCriterion], synthesizer.SynthesizeFeatures(item))).ToArray() //But this seems to fix it?
 			);
 
 			//There is a bug, this code tests for a failure.
 
-			/*
+
 			if(classifier is NullProbabalisticClassifier){
 				string[] synthFeatures = synthesizer.GetFeatureSchema();
 				string[] classifierClasses = classifier.GetClasses();
 
-				if(synthFeatures.Length != classifierClasses.Length || !synthFeatures.Zip (classifierClasses, (s, c) => (s == c)).Conjunction()){
-					Console.WriteLine ("A catastrophic error has occured.  Feature schema:");
+				if(synthFeatures.Length != classifierClasses.Length  || !synthFeatures.Zip (classifierClasses, (s, c) => (s == c)).Conjunction() ){
+					Console.WriteLine ("A catastrophic error has occured in the Null Probabalistic Classifier.  Feature schema:");
 					Console.WriteLine (synthFeatures.FoldToString ());
 					Console.WriteLine ("But classifier (NullProbabalisticClassifier):");
 					Console.WriteLine (classifierClasses.FoldToString ());
-					Console.WriteLine ("Training Data:");
+					Console.WriteLine ("Training Names:");
+					string[] trainingNames = series.Where (item => item.labels.ContainsKey (synthesizer.ClassificationCriterion)).Select(item => item.labels[synthesizer.ClassificationCriterion]).Distinct().Order().ToArray();
+					Console.WriteLine (trainingNames.FoldToString());
+					Console.WriteLine ("synthesizer, classifier, training: " + synthFeatures.Length + ", " + classifierClasses.Length + ", " + trainingNames.Length);
+					Console.WriteLine ("All Training Data:");
 					Console.WriteLine (series.FoldToString (item => item.labels.GetWithDefault (synthesizer.ClassificationCriterion, "[none]")));
+					Console.Write ("");
 				}
 			}
-			*/
+
 		}
 		
 		public double[] Classify(DiscreteEventSeries<Ty> series){

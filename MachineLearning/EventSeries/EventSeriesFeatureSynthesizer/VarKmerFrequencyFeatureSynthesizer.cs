@@ -161,7 +161,7 @@ namespace TextCharacteristicLearner
 			IEnumerable<TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>>> characteristicKmers = Enumerable.Range(0, classCount).AsParallel ().Select(index => new TupleStruct<int, IEnumerable<TupleStruct<Kmer<Ty>, double>>> (index, ExtractCharacteristicKmersForClass(index, classes[index].Item2, baseline)));
 
 			//Discard empty features.
-			if( discardEmptyFeatures){
+			if(discardEmptyFeatures){
 				characteristicKmers = characteristicKmers.ToArray ();
 				bool[] classFound = new bool[classCount];
 				int foundCount = 0;
@@ -218,18 +218,9 @@ namespace TextCharacteristicLearner
 
 			//TODO: Negative Kmers (note, may complicate sizing.  Will not work without a lot of data.)
 
-			//ERROR STATE (TODO make this an assert, it should never happen).
-			/*
-			if(features.Length != classCount){
-				Console.WriteLine ("A serious error has occured.");
-				Console.WriteLine ("Class Count = " + classCount);
-				Console.WriteLine ("Features = " + features.FoldToString () + ", len = " + features.Length + ")");
 
-				System.Environment.Exit (1);
-			}
-			*/
-
-			features.MapInPlace(fname => ClassificationCriterion + ":" + fname); //Add classification criterion to feature names.
+			//TODO: Put this back in.
+			//features.MapInPlace(fname => ClassificationCriterion + ":" + fname); //Add classification criterion to feature names.
 
 		}
 

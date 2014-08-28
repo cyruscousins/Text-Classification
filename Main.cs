@@ -18,14 +18,29 @@ namespace TextCharacteristicLearner
 		public static void Main (string[] args)
 		{
 
+			bool runClassification = false;
+			bool runDerivation = false;
+			
+			int count = 0;
+
+			for(int i = 0; i < args.Length; i++){
+				if(args[i] == "-c") runClassification = true;
+				if(args[i] == "-d") runDerivation = true;
+				if(args[i] == "-n" && i != args.Length - 1) Int32.TryParse(args[i + 1], out count);
+				else{
+					Console.WriteLine ("Failed to parse input \"" + args[i] + "\"");
+				}
+			}
+
 			Stopwatch sw = new Stopwatch();
 			sw.Start ();
 
 			//basicClassifierTest();
 			//testClassifiers();
 
-			//runNewsClassification();
-			runNewsClassifierDerivation();
+			if(runClassification) runNewsClassification(count);
+			if(runDerivation) runNewsClassifierDerivation(count);
+
 			//testNews ();
 			//TestLatex ();
 			//TestBrokenNormalizer();
@@ -132,7 +147,7 @@ namespace TextCharacteristicLearner
 
 
 
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/spanish.tex", classifiers.ToArray (), "Spanish Language", allData, "region", test ? 1 : 4, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Spanish Language Dialect Analysis", "Cyrus Cousins", 11, 16, "../../out/spanish/classification/", classifiers.ToArray (), "Spanish Language", allData, "region", test ? 1 : 4, analysisCriteria: new[]{"region", "type"}, synthesizer: synthesizer);
 
 			/*
 			if (classifier is SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>) {
@@ -148,65 +163,75 @@ namespace TextCharacteristicLearner
 
 		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst Report;Posr Report;Post Reoprt;Post Repoert;Post Report;Post Repo-rt;POST REPORT;POST REPORT \'environmental Laws Adequate, Implementation Weak\';POST REPORT P\';POST REPORT, POST REPORT;Post Repot;Post Reprot;Post Rerport;Post Roport;Post Team;PR;Pr);(pr);PR, PR;RSS;;Rss.;(rss;(rss)".Split (';'));
 		private static Dictionary<string, string> manualRenames = 
-			"Dr Sudhamshu K C:Dr Sudhamshu K.c.;Shrsisti_Shrestha;Shristi_Shrestha;Thomas_L._Friedman;Thomas_L_Friedman;William_Pfaff:William_Pfaf;Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
+			"Milanmani Sharma:Milan Mani Sharma;Dr Sudhamshu K C:Dr Sudhamshu K.c.;Shrsisti_Shrestha;Shristi_Shrestha;Thomas_L._Friedman;Thomas_L_Friedman;William_Pfaff:William_Pfaf;Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 			//new Dictionary<string, string>();
 		private static Dictionary<string, string> manualLocationRenames =
 			"KATHMANDDU:KATHMANDU;KATHAMNDU:KATHMANDU".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 
-		public static DiscreteSeriesDatabase<string> getNewsDataset(string size){
+		public static DiscreteSeriesDatabase<string> getNewsDataset (string size, int count = 0)
+		{
 			DiscreteSeriesDatabase<string> data = new DiscreteSeriesDatabase<string> ();
 
-			using (StreamReader keyfile = File.OpenText("../../res/shirish" + size + "key")){
-				keyfile.BaseStream.Seek(-81 * 2000, System.IO.SeekOrigin.End); //avg line is ~81 characters.
-				keyfile.ReadLine ();
+			using (StreamReader keyfile = File.OpenText("../../res/shirish" + size + "key")) {
+				if(count > 0){
+					keyfile.BaseStream.Seek (-107 * count, System.IO.SeekOrigin.End); //avg line is ~81 characters.
+					keyfile.ReadLine ();
+				}
 //				for(int i = 0; i < 8000; i++) keyfile.ReadLine ();
 				data.LoadTextDatabase ("../../res/shirish" + size + "/", keyfile, 1);
 			}
 
 			//Do some processing on the database
-			foreach(DiscreteEventSeries<string> item in data.data){
-				string author = AsciiOnly(item.labels["author"], false).RegexReplace (@"_+", @" ").RegexReplace (@"(?:[<])|(?:^[ ,])|(?:$)|(?:\')|\\", "").RegexReplace (@"([#$&])", @"\$1");
+			foreach (DiscreteEventSeries<string> item in data.data) {
+				string author = AsciiOnly (item.labels ["author"], false).RegexReplace (@"_+", @" ").RegexReplace (@"(?:[<])|(?:^[ ,])|(?:$)|(?:\')|\\", "").RegexReplace (@"([#$&])", @"\$1");
 				author = manualRenames.GetWithDefault (author, author);
 
-				if(author.StartsWith (@" ")){ //TODO: Why is this not caught by the regex?
+				if (author.StartsWith (@" ")) { //TODO: Why is this not caught by the regex?
 					author = author.Substring (1);
 				}
-				if(invalidAuthors.Contains (author)){
+				if (invalidAuthors.Contains (author)) {
 					//Console.WriteLine ("REMOVED " + author);
-					item.labels.Remove("author");
-				}
-				else{
-					item.labels["author"] = author; //Put the formatting done above back into db
+					item.labels.Remove ("author");
+				} else {
+					item.labels ["author"] = author; //Put the formatting done above back into db
 				}
 
-				item.labels["filename"] = item.labels["filename"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
-				if(item.labels.ContainsKey ("location"))
-					item.labels["location"] = item.labels["location"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
+				item.labels ["filename"] = item.labels ["filename"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
+				if (item.labels.ContainsKey ("location")){
+					item.labels ["location"] = item.labels ["location"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
+					item.labels ["location"] = manualLocationRenames.GetWithDefault (item.labels["location"], item.labels["location"]);
+				}
 			}
 
 			return data;
 		}
 
-		public static void runNewsClassification(){
+		public static void runNewsClassification(int count){
 			
-			DiscreteSeriesDatabase<string> data = getNewsDataset ("med");
-
+			DiscreteSeriesDatabase<string> data = getNewsDataset ("med", count);
 
 			//Create the classifier
+			/*
 			IEventSeriesProbabalisticClassifier<string> classifier = new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 60, 0.1, false),
 				new NullProbabalisticClassifier()
 			);
+			*/
+			
+			IEventSeriesProbabalisticClassifier<string> classifier = new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
+				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.6, false),
+				new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false)
+			);
 
 			//string documentTitle, string author, int width, int height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteEventSeries<Ty> dataset, string datasetTitle, string criterionByWhichToClassify
-			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/news.tex", classifier, "characteristic kmer classifier", data, "News", "author");
+			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/classification/", classifier, "characteristic kmer classifier", data, "News", "author");
 
 		}
-		public static void runNewsClassifierDerivation ()
+		public static void runNewsClassifierDerivation (int count)
 		{
 
 			//Load the database:
-			DiscreteSeriesDatabase<string> data = getNewsDataset ("med");
+			DiscreteSeriesDatabase<string> data = getNewsDataset ("med", count);
 			//data = data.SplitDatabase (.1).Item1;
 
 
@@ -217,7 +242,7 @@ namespace TextCharacteristicLearner
 				new DateValueFeatureSynthesizer("date"),
 				new LatinLanguageFeatureSynthesizer("author")
 			});
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/newsclassifiers.tex", classifiers.ToArray (), "News", data, "author", 2, new[]{"author", "location", "date"}, synth);
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/classifierderivation/", classifiers.ToArray (), "News", data, "author", 4, new[]{"author", "location", "date"}, synth);
 		}
 
 

@@ -282,7 +282,7 @@ namespace TextCharacteristicLearner
 			//TODO: IEnumerable<IGrouping> output?  (Use this for the output of varkfeaturesynthesizer?)
 
 			//TODO: Colored booleans.
-			return o.ToString ().RegexReplace("([#$%_{}])", @"\$1");
+			return o.ToString ().RegexReplace("([#$%_{}&])", @"\$1");
 		}
 
 	}

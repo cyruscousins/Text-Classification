@@ -137,14 +137,15 @@ namespace TextCharacteristicLearner
 
 			//Confusion Matrix population
 			foreach (var classification in classificationInstances) {
+				int confidenceBucket = Math.Min ((int)Math.Floor (classification.Item5 * bucketCount), bucketCount - 1); //On a score of 1 or greater, clip to the top bucket.  Highest confidence is always positive because confidences sum to 1.
 				//Counts
 				confusionMatrixCounts [schemaMapping [classification.Item2], schemaMapping [classification.Item3]] ++;
-				countsConfusionMatricesByConfidence [(int)Math.Floor (classification.Item5 * bucketCount * .999999)] [schemaMapping [classification.Item2], schemaMapping [classification.Item3]] ++;
+				countsConfusionMatricesByConfidence [confidenceBucket] [schemaMapping [classification.Item2], schemaMapping [classification.Item3]] ++;
 
 				//Scores
 				for (int j = 0; j < classCount; j++) {
 					confusionMatrixScores [schemaMapping [classification.Item2], j] += classification.Item4 [j];
-					scoresConfusionMatricesByConfidence [(int)Math.Floor (classification.Item5 * bucketCount * .999999)] [schemaMapping [classification.Item2], j] += classification.Item4 [j];
+					scoresConfusionMatricesByConfidence [confidenceBucket] [schemaMapping [classification.Item2], j] += classification.Item4 [j];
 				}
 			}
 
