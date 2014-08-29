@@ -115,6 +115,22 @@ namespace Whetstone{
 			return result;
 		}
 
+		public static IEnumerable<B> MapAdjacentPairs<A, B>(this IEnumerable<A> vals, Func<A, A, B> f){
+			List<B> result = new List<B>();
+
+			IEnumerator<A> e = vals.GetEnumerator();
+
+			while(e.MoveNext ()){
+				A a = e.Current;
+				e.MoveNext ();
+				A b = e.Current;
+
+				result.Add (f(a, b));
+			}
+
+			return result;
+		}
+
 		//IEnumerable.
 		//Extension Methods
 		public static IEnumerable<Tuple<int, int, B>> MapCombinations<A, B>(IList<A> data, Func<A, A, B> f){

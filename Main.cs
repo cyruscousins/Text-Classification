@@ -15,22 +15,71 @@ namespace TextCharacteristicLearner
 {
 	class MainClass
 	{
-		public static void Main (string[] args)
+		public static int Main (string[] args)
 		{
 
 			bool runClassification = false;
 			bool runDerivation = false;
-			
-			int count = 0;
+
+			//TODO: USE THESE!
+			string outDirectory = null;
+			string inFile = null;
+
+			int count = 100;
+
+			string[] options = "-c;-d;-n;-h".Split (';');
+			string[] descriptions = "Run classification;Run classifier derivation;Number of instances to use (0 for all);Display this helpful message".Split (';');
+
 
 			for(int i = 0; i < args.Length; i++){
-				if(args[i] == "-c") runClassification = true;
-				if(args[i] == "-d") runDerivation = true;
-				if(args[i] == "-n" && i != args.Length - 1) Int32.TryParse(args[i + 1], out count);
-				else{
-					Console.WriteLine ("Failed to parse input \"" + args[i] + "\"");
+				//Console.WriteLine (args[i]);
+				switch(args[i]){
+					case "-c": runClassification = true; break;
+					case "-d": runDerivation = true; break;
+					case "-n": 
+						if(i == args.Length - 1 || !Int32.TryParse(args[++i], out count)){
+							Console.WriteLine ("Please provide an integer argument following \"-n\".");
+							return 1;
+						}
+						break;
+					/*
+					case "-o":
+						if(i == args.Length - 1){
+							Console.WriteLine ("Please provide a string argument following \"-o\".");
+							return 0;
+						}
+					*/
+					case "--help":
+					case "-h":
+						Console.WriteLine (options.Zip (descriptions, (opt, desc) => opt + ": " + desc + ".").FoldToString ("Text Classification Suite\nUSAGE: [Input Dataset File] [Output Directory] [FLAGS]\n\n", "\n", "\n"));
+						return 1;
+					default:
+						if(inFile == null){
+							inFile = args[i];
+						}
+						else if(outDirectory == null){
+							outDirectory = args[i];
+
+							if(!outDirectory.EndsWith("/")){
+								Console.WriteLine ("Warning: Please ensure output directory \"" + outDirectory + "\" is a directory.");
+								outDirectory += "/";
+							}
+						}
+						else{
+							Console.WriteLine ("Failed to parse input \"" + args[i] + "\".  Try \"-h\" for help.");
+							return 1;
+						}
+						break;
 				}
 			}
+
+			if(inFile == null || outDirectory == null){
+				Console.WriteLine ("WARNING: input filename and and output directory not provided.");
+				Console.WriteLine ("Using defaults.");
+			
+				inFile = "../../res/shirishmed";
+			}
+
 
 			Stopwatch sw = new Stopwatch();
 			sw.Start ();
@@ -38,8 +87,8 @@ namespace TextCharacteristicLearner
 			//basicClassifierTest();
 			//testClassifiers();
 
-			if(runClassification) runNewsClassification(count);
-			if(runDerivation) runNewsClassifierDerivation(count);
+			if(runClassification) runNewsClassification(inFile, outDirectory == null ? "../../out/news/classifications/" : outDirectory, count);
+			if(runDerivation) runNewsClassifierDerivation(inFile, outDirectory == null ? "../../out/news/classifierderivation/" : outDirectory, count);
 
 			//testNews ();
 			//TestLatex ();
@@ -55,6 +104,7 @@ namespace TextCharacteristicLearner
 			Console.WriteLine ("Elapsed Time: " + sw.Elapsed);
 
 			//testClassifiers();
+			return 0;
 		}
 
 		public static void TestNewDesign(){
@@ -168,17 +218,17 @@ namespace TextCharacteristicLearner
 		private static Dictionary<string, string> manualLocationRenames =
 			"KATHMANDDU:KATHMANDU;KATHAMNDU:KATHMANDU".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 
-		public static DiscreteSeriesDatabase<string> getNewsDataset (string size, int count = 0)
+		public static DiscreteSeriesDatabase<string> getNewsDataset (string fileName, int count = 0)
 		{
 			DiscreteSeriesDatabase<string> data = new DiscreteSeriesDatabase<string> ();
 
-			using (StreamReader keyfile = File.OpenText("../../res/shirish" + size + "key")) {
+			using (StreamReader keyfile = File.OpenText(fileName + "key")) {
 				if(count > 0){
 					keyfile.BaseStream.Seek (-107 * count, System.IO.SeekOrigin.End); //avg line is ~81 characters.
 					keyfile.ReadLine ();
 				}
 //				for(int i = 0; i < 8000; i++) keyfile.ReadLine ();
-				data.LoadTextDatabase ("../../res/shirish" + size + "/", keyfile, 1);
+				data.LoadTextDatabase (fileName + "/", keyfile, 1);
 			}
 
 			//Do some processing on the database
@@ -206,9 +256,9 @@ namespace TextCharacteristicLearner
 			return data;
 		}
 
-		public static void runNewsClassification(int count){
+		public static void runNewsClassification(string inFile, string outDirectory, int count){
 			
-			DiscreteSeriesDatabase<string> data = getNewsDataset ("med", count);
+			DiscreteSeriesDatabase<string> data = getNewsDataset (inFile, count);
 
 			//Create the classifier
 			/*
@@ -224,14 +274,14 @@ namespace TextCharacteristicLearner
 			);
 
 			//string documentTitle, string author, int width, int height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteEventSeries<Ty> dataset, string datasetTitle, string criterionByWhichToClassify
-			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/classification/", classifier, "characteristic kmer classifier", data, "News", "author");
+			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, outDirectory, classifier, "characteristic kmer classifier", data, "News", "author");
 
 		}
-		public static void runNewsClassifierDerivation (int count)
+		public static void runNewsClassifierDerivation (string inFile, string outDirectory, int count)
 		{
 
 			//Load the database:
-			DiscreteSeriesDatabase<string> data = getNewsDataset ("med", count);
+			DiscreteSeriesDatabase<string> data = getNewsDataset (inFile, count);
 			//data = data.SplitDatabase (.1).Item1;
 
 
@@ -242,7 +292,7 @@ namespace TextCharacteristicLearner
 				new DateValueFeatureSynthesizer("date"),
 				new LatinLanguageFeatureSynthesizer("author")
 			});
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, "../../out/news/classifierderivation/", classifiers.ToArray (), "News", data, "author", 4, new[]{"author", "location", "date"}, synth);
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, outDirectory, classifiers.ToArray (), "News", data, "author", 4, new[]{"author", "location", "date"}, synth);
 		}
 
 

@@ -59,6 +59,9 @@ namespace TextCharacteristicLearner
 		double[,] accuracyByTrueClassAndConfidence;
 		double[,] accuracyByPredictedClassAndConfidence;
 
+		//Overfitting
+		//Name, true class, predicted class, scores, winning score;
+		public List<Tuple<string, string, string, double[], double>> trainingDataClassificationInstances;
 
 
 		//Simple:
@@ -72,6 +75,8 @@ namespace TextCharacteristicLearner
 		//Should be parameters
 
 		int maxDisplayClassCount = 50;
+		bool testOverfitting = true;
+		double overfittingTestFrac = .1;
 
 
 		public ClassifierAccuracyAnalysis (IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName,DiscreteSeriesDatabase<Ty> labeledData, string criterionByWhichToClassify, double trainSplitFrac, int iterations, double bucketSize)
@@ -105,6 +110,9 @@ namespace TextCharacteristicLearner
 			//Raw data classifications:
 			//Name, true class, predicted class, scores, winning score;
 			classificationInstances = new List<Tuple<string, string, string, double[], double>> ();
+			if(testOverfitting){
+				trainingDataClassificationInstances = new List<Tuple<string, string, string, double[], double>> ();
+			}
 
 			//Run and make classifiers.
 			for (int i = 0; i < iterations; i++) {
@@ -119,6 +127,9 @@ namespace TextCharacteristicLearner
 				string[] classifierSchema = classifier.GetClasses ();
 
 				classificationInstances.AddRange (test.data.AsParallel ().Select (item => classificationInfo (classifier, classifierSchema, schemaMapping, item, nameCriterion, criterionByWhichToClassify)));
+				if(testOverfitting){
+					trainingDataClassificationInstances.AddRange (training.data.Take ((int)(overfittingTestFrac * training.data.Count)).AsParallel().Select (item => classificationInfo (classifier, classifierSchema, schemaMapping, item, nameCriterion, criterionByWhichToClassify)));
+				}
 			}
 
 
@@ -445,10 +456,10 @@ namespace TextCharacteristicLearner
 				    	Enumerable.Range (0, classCount).Select (column => LatexExtensions.colorPercent(confusionMatrixScores[row, column] / LatexExtensions.fzeroToOne (scoreRowSums[row]), 1)))));
 			}
 
-			// Derivatino of the minimum bucket index:
+			// Derivation of the minimum bucket index:
 			// minimum selectable confidence = 1.0 / class count
 			// bucketsize = 1.0 / bucket count
-			// index of minimum bucket = floor(minimum selectable confidence / bucket size) = floor(bucket count / class count)
+			// index of minimum bucket = floor(minimum selectable confidence / bucket size) = floor(bucket count / class count
 			int minPredictionBucketIndex = (int)Math.Floor (bucketCount / (double)classCount);
 			int bucketsToEnumerate = bucketCount - minPredictionBucketIndex;
 
@@ -520,6 +531,22 @@ namespace TextCharacteristicLearner
 							Enumerable.Range (0, classCount + 1).Select (c => LatexExtensions.colorPercent(accuracyByTrueClassAndConfidence[c, b]))))
 					)
 				));
+			}
+
+			if(testOverfitting)
+			{
+				//Name, true class, predicted class, scores, winning score;
+				double trainingDataAccuracy = trainingDataClassificationInstances.Where(instance => instance.Item3 == instance.Item2).Count() / (double) trainingDataClassificationInstances.Count;
+
+				//TODO: Sum weight as well?
+
+				result.AppendLine (subsubsection + "{Overfitting Analysis}");
+				result.AppendLine ("Classifier performance on training data was measured " + trainingDataAccuracy.ToString(LatexExtensions.formatString) + ", whereas test data accuracy was measured at " + overallAccuracy.ToString (LatexExtensions.formatString) + ".");
+				if(trainingDataAccuracy < overallAccuracy) result.AppendLine ("Assuming sufficient coverage in testing data, this is a good sign that the learned models are very general, and do not overfit the data.");
+				else result.AppendLine ("This discrepancy suggests the learned model's output is " + LatexExtensions.quantificationAdverbPhrase(trainingDataAccuracy - overallAccuracy) + " succeptible to overfitting.");
+
+				//TODO: Overfitting by class?
+				//TODO: Overfitting by confidence?
 			}
 
 			//May be good to have a space filling charts of correct vs incorrect classifications by confidence.

@@ -108,7 +108,7 @@ namespace TextCharacteristicLearner
 
 			//Accuracy analysis:
 			//Analysis, classifier string, accuracy analysis string
-			Tuple<ClassifierAccuracyAnalysis<Ty>, string, string>[] analyses = classifiers.AsParallel () //.WithExecutionMode(System.Linq.ParallelExecutionMode.ForceParallelism)
+			Tuple<ClassifierAccuracyAnalysis<Ty>, string, string>[] analyses = classifiers.AsParallel ().WithExecutionMode(System.Linq.ParallelExecutionMode.ForceParallelism).WithDegreeOfParallelism(classifiers.Length)
 				.Select (classifier => new ClassifierAccuracyAnalysis<Ty> (
 					classifier.Item2, classifier.Item1, dataset, criterionByWhichToClassify, .8, classificationRounds, .05).runAccuracyAnalysis ()
 			)
@@ -1400,7 +1400,7 @@ namespace TextCharacteristicLearner
 			return englishNumberString(count, preferNumeric) + " " + pluralPhrase(s, count);
 		}
 
-		public static Dictionary<string, string> irregularPlurals = "series:series;schema:schemata;formula:formulae;hypothesis:hypothesi;criterion:criteria;datum:data;alumna:alumnae;foot:feet;goose:geese;louse:lice;dormouse:dormice;man:men;mouse:mice;tooth:teeth;woman:women".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary ();
+		public static Dictionary<string, string> irregularPlurals = "symposium:symposia;curriculum:curricula;series:series;schema:schemata;formula:formulae;hypothesis:hypothesi;criterion:criteria;datum:data;alumna:alumnae;foot:feet;goose:geese;louse:lice;dormouse:dormice;man:men;mouse:mice;tooth:teeth;woman:women".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary ();
 
 		public static string plural(string s){
 			{
