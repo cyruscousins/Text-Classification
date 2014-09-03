@@ -19,16 +19,18 @@ namespace TextCharacteristicLearner
 		{
 
 			bool runClassification = false;
-			bool runDerivation = false;
+			bool runDerivation = true;
 
 			//TODO: USE THESE!
 			string outDirectory = null;
 			string inFile = null;
 
-			int count = 100;
+			int count = 1000;
 
-			string[] options = "-c;-d;-n;-h".Split (';');
-			string[] descriptions = "Run classification;Run classifier derivation;Number of instances to use (0 for all);Display this helpful message".Split (';');
+			int iterations = 2;
+
+			string[] options = "-c;-d;-n;-i;-h".Split (';');
+			string[] descriptions = "Run classification;Run classifier derivation;Number of instances to use (0 for all);Set the number of accuracy analysis iterations;Display this helpful message".Split (';');
 
 
 			for(int i = 0; i < args.Length; i++){
@@ -49,6 +51,13 @@ namespace TextCharacteristicLearner
 							return 0;
 						}
 					*/
+					case "-i":
+						if(i == args.Length - 1 || !Int32.TryParse(args[++i], out iterations)){
+							Console.WriteLine ("Please provide an integer argument following \"-i\".");
+							return 1;
+						}
+						break;
+						
 					case "--help":
 					case "-h":
 						Console.WriteLine (options.Zip (descriptions, (opt, desc) => opt + ": " + desc + ".").FoldToString ("Text Classification Suite\nUSAGE: [Input Dataset File] [Output Directory] [FLAGS]\n\n", "\n", "\n"));
@@ -87,8 +96,8 @@ namespace TextCharacteristicLearner
 			//basicClassifierTest();
 			//testClassifiers();
 
-			if(runClassification) runNewsClassification(inFile, outDirectory == null ? "../../out/news/classifications/" : outDirectory, count);
-			if(runDerivation) runNewsClassifierDerivation(inFile, outDirectory == null ? "../../out/news/classifierderivation/" : outDirectory, count);
+			if(runClassification) runNewsClassification(inFile, outDirectory == null ? "../../out/news/classifications/" : outDirectory, count, iterations);
+			if(runDerivation) runNewsClassifierDerivation(inFile, outDirectory == null ? "../../out/news/classifierderivation/" : outDirectory, count, iterations);
 
 			//testNews ();
 			//TestLatex ();
@@ -213,10 +222,19 @@ namespace TextCharacteristicLearner
 
 		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst Report;Posr Report;Post Reoprt;Post Repoert;Post Report;Post Repo-rt;POST REPORT;POST REPORT \'environmental Laws Adequate, Implementation Weak\';POST REPORT P\';POST REPORT, POST REPORT;Post Repot;Post Reprot;Post Rerport;Post Roport;Post Team;PR;Pr);(pr);PR, PR;RSS;;Rss.;(rss;(rss)".Split (';'));
 		private static Dictionary<string, string> manualRenames = 
-			"Milanmani Sharma:Milan Mani Sharma;Dr Sudhamshu K C:Dr Sudhamshu K.c.;Shrsisti_Shrestha;Shristi_Shrestha;Thomas_L._Friedman;Thomas_L_Friedman;William_Pfaff:William_Pfaf;Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
+			"Priyakur Mandav:Priyankur Mandav;Milanmani Sharma:Milan Mani Sharma;Dr Sudhamshu K C:Dr Sudhamshu K.c.;Shrsisti_Shrestha;Shristi_Shrestha;Thomas_L._Friedman;Thomas_L_Friedman;William_Pfaff:William_Pfaf;Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 			//new Dictionary<string, string>();
 		private static Dictionary<string, string> manualLocationRenames =
 			"KATHMANDDU:KATHMANDU;KATHAMNDU:KATHMANDU".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
+		private static HashSet<string> femaleNames = new HashSet<string>(
+			"barbara;catherine;ellen;jamie;jasmine;sheryl;sue;karen;kathy".Split (';')
+		);
+		private static HashSet<string> neutralNames = new HashSet<string>(
+			"susan".Split (';')
+		);
+		private static HashSet<string> titles = new HashSet<string>(
+			"dr;doctor;prof;professor".Split (';')
+		);
 
 		public static DiscreteSeriesDatabase<string> getNewsDataset (string fileName, int count = 0)
 		{
@@ -228,12 +246,12 @@ namespace TextCharacteristicLearner
 					keyfile.ReadLine ();
 				}
 //				for(int i = 0; i < 8000; i++) keyfile.ReadLine ();
-				data.LoadTextDatabase (fileName + "/", keyfile, 1);
+				data.LoadTextDatabase (fileName + "/", keyfile, DatabaseLoader.ProcessEnglishText, 1);
 			}
 
 			//Do some processing on the database
 			foreach (DiscreteEventSeries<string> item in data.data) {
-				string author = AsciiOnly (item.labels ["author"], false).RegexReplace (@"_+", @" ").RegexReplace (@"(?:[<])|(?:^[ ,])|(?:$)|(?:\')|\\", "").RegexReplace (@"([#$&])", @"\$1");
+				string author = AsciiOnly (item.labels ["author"], false).RegexReplace (@"_+", @" ").RegexReplace (@"(?:[<])|(?:^[ ,])|(?:$)|(?:\')|(?:\\)", "").RegexReplace (@"([#$&])", @"\$1");
 				author = manualRenames.GetWithDefault (author, author);
 
 				if (author.StartsWith (@" ")) { //TODO: Why is this not caught by the regex?
@@ -244,6 +262,21 @@ namespace TextCharacteristicLearner
 					item.labels.Remove ("author");
 				} else {
 					item.labels ["author"] = author; //Put the formatting done above back into db
+
+					string[] authSplit = author.Split(' ');
+					string firstName = authSplit[0].ToLower ();
+					if(titles.Contains(firstName) && authSplit.Length > 1){
+						firstName = authSplit[1];
+					}
+					if(neutralNames.Contains(firstName) || firstName.Length == 1){
+
+					}
+					else if(firstName[firstName.Length - 1] == 'a' || femaleNames.Contains(firstName)){
+						item.labels["gender"] = "female";
+					}
+					else if(firstName.Length > 1){
+						item.labels["gender"] = "male";
+					}
 				}
 
 				item.labels ["filename"] = item.labels ["filename"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
@@ -256,7 +289,7 @@ namespace TextCharacteristicLearner
 			return data;
 		}
 
-		public static void runNewsClassification(string inFile, string outDirectory, int count){
+		public static void runNewsClassification(string inFile, string outDirectory, int count, int iterations){
 			
 			DiscreteSeriesDatabase<string> data = getNewsDataset (inFile, count);
 
@@ -274,10 +307,10 @@ namespace TextCharacteristicLearner
 			);
 
 			//string documentTitle, string author, int width, int height, string outFile, IEventSeriesProbabalisticClassifier<Ty> classifier, DiscreteEventSeries<Ty> dataset, string datasetTitle, string criterionByWhichToClassify
-			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, outDirectory, classifier, "characteristic kmer classifier", data, "News", "author");
+			WriteupGenerator.ProduceClassificationReport<string>("Analysis and Classification of " + data.data.Count + " Ekantipur Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, outDirectory, classifier, "characteristic kmer classifier", data, "News", "author", iterations);
 
 		}
-		public static void runNewsClassifierDerivation (string inFile, string outDirectory, int count)
+		public static void runNewsClassifierDerivation (string inFile, string outDirectory, int count, int iterations)
 		{
 
 			//Load the database:
@@ -288,11 +321,12 @@ namespace TextCharacteristicLearner
 			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.NewsTestClassifiers().Concat(TextClassifierFactory.NewsTestAdvancedClassifiers().Skip (1));
 			IFeatureSynthesizer<string> synth = new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
 				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
-				new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 2, 50, 0.1, false),
+				new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 3, 50, 1, false),
+				new VarKmerFrequencyFeatureSynthesizer<string>("gender", 3, 8, 50, 10, false),
 				new DateValueFeatureSynthesizer("date"),
 				new LatinLanguageFeatureSynthesizer("author")
 			});
-			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, outDirectory, classifiers.ToArray (), "News", data, "author", 4, new[]{"author", "location", "date"}, synth);
+			WriteupGenerator.ProduceClassifierComparisonWriteup<string>("Classifier Comparison Analysis on Ekantipur News Articles", "Cyrus Cousins with Shirish Pokharel", 20, 20, outDirectory, classifiers.ToArray (), "News", data, "author", iterations, new[]{"author", "location", "date", "gender"}, synth);
 		}
 
 
@@ -431,7 +465,7 @@ namespace TextCharacteristicLearner
 			TextReader reader = new StringReader(file);
 
 			DiscreteSeriesDatabase<string> d = new DiscreteSeriesDatabase<string> ();
-			d.LoadTextDatabase (directory, reader, 3);
+			d.LoadTextDatabase (directory, reader, DatabaseLoader.ProcessSpanishText, 3);
 
 			if(shorten){
 				d = new DiscreteSeriesDatabase<string>(d.Select (item => new DiscreteEventSeries<string>(item.labels, item.data.Take (750).ToArray ())));

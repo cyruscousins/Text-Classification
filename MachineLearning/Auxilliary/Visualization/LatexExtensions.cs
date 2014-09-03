@@ -179,13 +179,13 @@ namespace TextCharacteristicLearner
 
 				thisDoc.AppendClose ();
 			
-				thisDoc.Write (thisPath, s => AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", "")); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
+				thisDoc.Write (thisPath, FinalSanitize); //s => s.RegexReplace (@"[^\u0000-\u007F\u0080-\u0099]", string.Empty));
 				Console.WriteLine ("Wrote full report to \"" + thisPath + "\"");
 			}
 
 		}
 
-		public static void ProduceClassificationReport<Ty> (string documentTitle, string author, double width, double height, string outDirectory, IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName, DiscreteSeriesDatabase<Ty> dataset, string datasetTitle, string criterionByWhichToClassify)
+		public static void ProduceClassificationReport<Ty> (string documentTitle, string author, double width, double height, string outDirectory, IEventSeriesProbabalisticClassifier<Ty> classifier, string classifierName, DiscreteSeriesDatabase<Ty> dataset, string datasetTitle, string criterionByWhichToClassify, int accuracyIterations = 4)
 		{
 
 			Console.WriteLine ("Producing classification report:");
@@ -248,7 +248,7 @@ namespace TextCharacteristicLearner
 			}
 			//TODO classification text file.
 
-			string classifierAccuracyReportString = classifier.ClassifierAccuracyLatexString (classifierName, dataset, criterionByWhichToClassify, .8, 2, .05);
+			string classifierAccuracyReportString = classifier.ClassifierAccuracyLatexString (classifierName, dataset, criterionByWhichToClassify, .8, accuracyIterations, .05);
 			Console.WriteLine ("Created Classifier Accuracy Report...");
 			{
 				thisDoc = new LatexDocument ("Classifier Accuracy Report", author, .8, width, height);
@@ -288,7 +288,7 @@ namespace TextCharacteristicLearner
 		}
 
 		public static string FinalSanitize(string s){
-			return AsciiOnly(s, true).RegexReplace ("[²½Ã¢©Ââ¦]", "");
+			return AsciiOnly(s, false).RegexReplace ("[²½Ã¢©Ââ¦¬¯]", "");
 		}
 		public static string AsciiOnly(string input, bool includeExtendedAscii)
 		{
@@ -580,7 +580,7 @@ namespace TextCharacteristicLearner
 
 					if(smallClasses.Length > 0){
 						result.AppendLine (@"\textbf{Undersized classes}" + "\n");
-						result.AppendLine (englishCapitolizeFirst(englishCountOfString("this class is", largeClasses.Length)) + " smaller than " + smallLim + " times the mean class size.\n"); //TODO sing/plur
+						result.AppendLine (englishCapitolizeFirst(pluralPhrase("this class is", smallClasses.Length)) + " smaller than " + smallLim + " times the mean class size.\n"); //TODO sing/plur
 						
 						result.AppendLine (@"\begin{itemize}");
 						result.AppendLine (smallClasses.Select (item => "Class " + item.Item1 + " contains " + item.Item2 + " " + (item.Item2 == 1 ? "instance" : "instances")+ ", which is " + (item.Item2 / meanInstanceCount).ToString (formatString) + " times the average.").FoldToString("\t\\item ", "", "\t\\item "));
@@ -798,6 +798,11 @@ namespace TextCharacteristicLearner
 			//Train the synth on the input data.
 			synth.Train (data); //TODO: This training data is used to create the labeled instances.
 			string[] schema = synth.GetFeatureSchema();
+
+			int cutoff = 1000;
+			if(schema.Length > cutoff){
+				return "\\subsection{Feature Overview}\n\textbf{Omitted, " + schema.Length + " features found.  Cutoff is " + cutoff + "}";
+			}
 			string[] classes = labeledSeries.Select (item => item.labels[criterion]).Distinct ().ToArray();
 
 			//Run the synth on all data, synthesize features.
@@ -1027,8 +1032,10 @@ namespace TextCharacteristicLearner
 
 		//Escapes latex characters.
 		public static string latexEscapeString(string s){
-			return s.RegexReplace(@"(([^\\])[][{}#%_$])", @"$1\$2");
+			//Escape backslashes that aren't escaping something else, then escape things that need escaping that aren't backslashes.
+			return s.Replace (@"\", "").RegexReplace (@"([{}#%_$&])", @"\$1").RegexReplace (@" {2,}", " ");
 			//TODO: squared?
+			//return s.RegexReplace(@"(([^\\])[][{}#%_$])|(?:\\", @"$1\$2");
 		}
 
 		//Gets rid of non labelable characters

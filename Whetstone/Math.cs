@@ -29,7 +29,15 @@ namespace Whetstone
 		}
 
 		public static double CrossProduct(this double[] array1, double[] array2){
-			return array1.Zip (array2, (a, b) => a * b).Sum ();
+			//Clean implementation:
+			//return array1.Zip (array2, (a, b) => a * b).Sum ();
+
+			//Fast implementation
+			double sum = 0;
+			for(int i = 0; i < array1.Length; i++){
+				sum += array1[i] * array2[i];
+			}
+			return sum;
 		}
 
 		

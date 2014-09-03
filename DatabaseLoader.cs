@@ -23,11 +23,11 @@ namespace TextCharacteristicLearner
 
 		//Load a database file from a stream.
 
-		public static void LoadTextDatabase(this DiscreteSeriesDatabase<string> db, TextReader inStream){
-			LoadTextDatabase(db, "", inStream);
+		public static void LoadTextDatabase(this DiscreteSeriesDatabase<string> db, TextReader inStream, Func<string, string> textProcessor){
+			LoadTextDatabase(db, "", inStream, textProcessor);
 		}
 
-		public static void LoadTextDatabase(this DiscreteSeriesDatabase<string> db, string directory, TextReader inStream, int logLevel = 0) { //TODO make this an extension method for DiscreteSeries<string> ?
+		public static void LoadTextDatabase(this DiscreteSeriesDatabase<string> db, string directory, TextReader inStream, Func<string, string> textProcessor, int logLevel = 0) { //TODO make this an extension method for DiscreteSeries<string> ?
 			List<DiscreteEventSeries<string>> fileData = db.data;
 
 			//Read the file in
@@ -35,7 +35,7 @@ namespace TextCharacteristicLearner
 			string[] entries = s.Split (newLine, StringSplitOptions.RemoveEmptyEntries);
 
 			//Read each file
-			List<DiscreteEventSeries<string>> items = entries.AsParallel().Select(entry => processEntry(directory, entry, logLevel)).Where (entry => entry != null).ToList ();
+			List<DiscreteEventSeries<string>> items = entries.AsParallel().Select(entry => processEntry(directory, entry, logLevel, textProcessor)).Where (entry => entry != null).ToList ();
 
 			fileData.AddRange (items);
 
@@ -56,7 +56,7 @@ namespace TextCharacteristicLearner
 			}
 		}
 
-		public static DiscreteEventSeries<string> processEntry(string directory, string entry, int logLevel){
+		public static DiscreteEventSeries<string> processEntry(string directory, string entry, int logLevel, Func<string, string> textProcessor){
 			//Console.WriteLine ("Processing: " + entry);
 
 			//Split into info and path
@@ -84,7 +84,7 @@ namespace TextCharacteristicLearner
 
 			//Add the file as an entry to the database.
 			using (StreamReader sr = File.OpenText(filePath)) {
-				string[] words = DatabaseLoader.loadWordFileRaw (sr);
+				string[] words = DatabaseLoader.loadWordFileRaw (sr, textProcessor);
 				DiscreteEventSeries<string> file = new DiscreteEventSeries<string>(tags, words);
 
 				if(logLevel >= 2) Console.WriteLine ("Read " + tags.FoldToString (item => item.Key + ":" + item.Value) + ": " + words.Length + " words.");
@@ -96,16 +96,24 @@ namespace TextCharacteristicLearner
 
 		//Load a word file
 
-		public static string[] loadWordFileRaw(StreamReader stream){
-			String file = stream.ReadToEnd ();
+		public static string[] loadWordFileRaw(StreamReader stream, Func<string, string> textProcessor){
+			String file = textProcessor(stream.ReadToEnd ());
 			string[] result = TextProcessor.wordify(file);
 			return result;
 		}
-		
+
 		public static string[] loadWordFileRaw(string filePath){
 			using (StreamReader sr = File.OpenText(filePath)) {
-				return loadWordFileRaw (sr);
+				return loadWordFileRaw (sr, a => a);
 			}
+		}
+
+		//Text preprocessor functions
+		public static string ProcessEnglishText(string s){
+			return s.RegexReplace (@"[^a-zA-Z0-9àèìòùÀÈÌÒÙäëïöüÄËÏÖÜ.,;:!?""'`“”/\\-]+", ""); //TODO: . in [] is not a special character?
+		}
+		public static string ProcessSpanishText(string s){
+			return s.RegexReplace (@"[^a-zA-Z0-9áéíóúü'ÁÉÍÓÚüÜñÑ.,;:""'`¡!¿?""“”«»/\\-]+", "");
 		}
 	}
 }

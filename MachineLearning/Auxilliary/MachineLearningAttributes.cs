@@ -94,6 +94,19 @@ namespace TextCharacteristicLearner
 		public static AttrTy[] GetCustomAttributes<AttrTy>(this Type ty, bool inherit){
 			return ty.GetCustomAttributes (typeof(AttrTy), inherit).Cast<AttrTy>().ToArray (); //Not a great solution, but it gets the job done.
 		}
+		
+		public static string GetAlgorithmName(Type modelType){
+			AlgorithmNameAttribute[] nameAttributes = modelType.GetCustomAttributes<AlgorithmNameAttribute> (false);
+			if (nameAttributes.Length != 1) {
+				return modelType.ToString ();
+			}
+
+			return nameAttributes [0].AlgorithmName;
+		}
+
+		public static string GetAlgorithmName(Object model){
+			return GetAlgorithmName(model.GetType());
+		}
 
 		public static IEnumerable<Tuple<FieldInfo, AttrTy>> GetFieldCustomAttributes<AttrTy>(this Type ty, bool inherit){
 			return ty.GetFields()
@@ -116,6 +129,7 @@ namespace TextCharacteristicLearner
 			);
 		}
 
+		//TODO Can we put a generic constraint on object to mandate that it has an attribute?  I don't think so.  
 		public static IEnumerable<Tuple<string, object>> GetAlgorithmParameters(object o){
 			Type oTy = o.GetType ();
 			return 
@@ -132,17 +146,72 @@ namespace TextCharacteristicLearner
 				).OrderBy (tup => tup.Item1).Select (tup => new Tuple<string, object>(tup.Item2, tup.Item3));
 		}
 
-		//TODO: These are actually trained.  Clone and replace with untrained.
+		
 		public static string UntrainedModelString (Object model)
 		{
 			Type modelType = model.GetType ();
 			
+			string name = GetAlgorithmName(model);
+			
+			IEnumerable<Tuple<string, object>> algorithmParameters = GetAlgorithmParameters (model);
+			IEnumerable<Tuple<string, object>> trainingParameters = GetAlgorithmTraining (model);
+
+			StringBuilder modelString = new StringBuilder ();
+			modelString.AppendLine (name + " (" + modelType.Name + "):");
+			modelString.AppendLine ("\tAlgorithm Parameters:");
+			modelString.AppendLine (algorithmParameters.FoldToString (param => param.Item1 + " = " + ObjectString (param.Item2), "\t\t", "", "\n\t\t"));
+
+			return modelString.ToString();
+		}
+
+		public static string UntrainedModelLatexString (Object model)
+		{
+			Type modelType = model.GetType ();
+
 			AlgorithmNameAttribute[] nameAttributes = modelType.GetCustomAttributes<AlgorithmNameAttribute> (false);
 			if (nameAttributes.Length != 1) {
 				return model.ToString ();
 			}
 
 			string name = nameAttributes [0].AlgorithmName;
+			
+			IEnumerable<Tuple<string, object>> algorithmParameters = GetAlgorithmParameters (model);
+			IEnumerable<Tuple<string, object>> trainingParameters = GetAlgorithmTraining (model);
+
+			StringBuilder modelString = new StringBuilder ();
+			modelString.AppendLine (@"\textbf{\textcolor[rgb]{.3,.8,.7}{" + name + "}}" + " (" + @"\texttt{" + modelType.Name + "}" + "):" + "\n");
+
+//			modelString.AppendLine (@"\begin{easylist}[itemize]");
+			modelString.AppendLine (@"\begin{description}");
+
+			/*
+			//TODO: This concept doesn't really exist in code yet, except in a feature synthesizer, where it really shouldn't.
+			if(model is IEventSeriesProbabalisticClassifier<var>){
+				modelString.AppendLine ("Classifying along " + @"\texttt{" + ((IEventSeriesProbabalisticClassifier<var>)model).Class)
+			}
+			*/
+
+			if (algorithmParameters.Any ()) {
+				modelString.AppendLine (@"\item[Algorithm Parameters] \hfill \\");
+				//TODO: Generic parameters on this one?
+//				modelString.AppendLine (@"\begin{easylist}[itemize]");
+				modelString.AppendLine (@"\begin{itemize}");
+				modelString.AppendLine (algorithmParameters.FoldToString (tup => @"\textcolor[rgb]{.9,.75,.8}{" + tup.Item1 + "}" + " = " + ObjectLatexString (tup.Item2), @"\item ", "", "\n\\item "));
+				modelString.AppendLine (@"\end{itemize}");
+			}
+
+			modelString.AppendLine (@"\end{description}");
+
+			return modelString.ToString();
+
+			//TODO Add display of schema on a FeatureSynthesizer?  This is only sometimes available before training.
+		}
+
+		public static string TrainedModelString (Object model)
+		{
+			Type modelType = model.GetType ();
+			
+			string name = GetAlgorithmName(model); //TODO: If null return ToString();
 			
 			IEnumerable<Tuple<string, object>> algorithmParameters = GetAlgorithmParameters (model);
 			IEnumerable<Tuple<string, object>> trainingParameters = GetAlgorithmTraining (model);
@@ -166,13 +235,13 @@ namespace TextCharacteristicLearner
 			return modelString.ToString();
 		}
 
-		public static string UntrainedModelLatexString (Object model)
+		public static string TrainedModelLatexString (Object model)
 		{
 			Type modelType = model.GetType ();
 
 			AlgorithmNameAttribute[] nameAttributes = modelType.GetCustomAttributes<AlgorithmNameAttribute> (false);
 			if (nameAttributes.Length != 1) {
-				return model.ToString ();
+				return model.ToString (); //TODO escape this string.
 			}
 
 			string name = nameAttributes [0].AlgorithmName;
@@ -227,7 +296,7 @@ namespace TextCharacteristicLearner
 
 		public static string ObjectString(Object o){
 			if(o.GetType ().GetCustomAttributes<AlgorithmNameAttribute>(false).Length > 0){
-				return UntrainedModelString(o);
+				return TrainedModelString(o);
 			}
 			if(!(o is string) && o is IEnumerable){ //TODO: Use IsAssignableFrom?
 				Type genericType = typeof(object);
@@ -253,7 +322,7 @@ namespace TextCharacteristicLearner
 
 		public static string ObjectLatexString(Object o){
 			if(o.GetType ().GetCustomAttributes<AlgorithmNameAttribute>(false).Length > 0){
-				return UntrainedModelLatexString(o);
+				return TrainedModelLatexString(o);
 			}
 			if(!(o is string) && o is IEnumerable){ //TODO: Use IsAssignableFrom?
 				Type genericType = typeof(object);
@@ -282,7 +351,7 @@ namespace TextCharacteristicLearner
 			//TODO: IEnumerable<IGrouping> output?  (Use this for the output of varkfeaturesynthesizer?)
 
 			//TODO: Colored booleans.
-			return o.ToString ().RegexReplace("([#$%_{}&])", @"\$1");
+			return LatexExtensions.latexEscapeString(o.ToString ());
 		}
 
 	}

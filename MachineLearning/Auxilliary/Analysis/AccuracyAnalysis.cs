@@ -114,9 +114,15 @@ namespace TextCharacteristicLearner
 				trainingDataClassificationInstances = new List<Tuple<string, string, string, double[], double>> ();
 			}
 
+			string classifierName = "\"" + AlgorithmReflectionExtensions.GetAlgorithmName(classifier) + "\"";
+
+			Console.WriteLine ("Running classifier " + classifierName + " on " + labeledData.data.Count + " items.");
+
+			//TODO: Not a bad idea to duplicate the classifiers to increase parallelism.
+
 			//Run and make classifiers.
 			for (int i = 0; i < iterations; i++) {
-				Console.WriteLine ("Classifier Accuracy: Initiating round " + (i + 1) + " / " + iterations);
+				Console.WriteLine ("Classifier Accuracy: Initiating round " + (i + 1) + " / " + iterations + " for " + classifierName + ".");
 				
 				Tuple<DiscreteSeriesDatabase<Ty>, DiscreteSeriesDatabase<Ty>> split = labeledData.SplitDatabase (trainSplitFrac); //TODO: Vary this?
 				DiscreteSeriesDatabase<Ty> training = split.Item1;
@@ -126,9 +132,9 @@ namespace TextCharacteristicLearner
 
 				string[] classifierSchema = classifier.GetClasses ();
 
-				classificationInstances.AddRange (test.data.AsParallel ().Select (item => classificationInfo (classifier, classifierSchema, schemaMapping, item, nameCriterion, criterionByWhichToClassify)));
+				classificationInstances.AddRange (test.data.AsParallel ().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select (item => classificationInfo (classifier, classifierSchema, schemaMapping, item, nameCriterion, criterionByWhichToClassify)));
 				if(testOverfitting){
-					trainingDataClassificationInstances.AddRange (training.data.Take ((int)(overfittingTestFrac * training.data.Count)).AsParallel().Select (item => classificationInfo (classifier, classifierSchema, schemaMapping, item, nameCriterion, criterionByWhichToClassify)));
+					trainingDataClassificationInstances.AddRange (training.data.Take ((int)(overfittingTestFrac * training.data.Count)).AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select (item => classificationInfo (classifier, classifierSchema, schemaMapping, item, nameCriterion, criterionByWhichToClassify)));
 				}
 			}
 

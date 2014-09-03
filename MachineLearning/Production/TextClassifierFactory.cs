@@ -347,7 +347,8 @@ namespace TextCharacteristicLearner
 					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
 						authorFactory(),
 						new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 3, 50, 0.1, false),
-						new DateValueFeatureSynthesizer("date"),
+						new VarKmerFrequencyFeatureSynthesizer<string>("gender", 3, 8, 50, 10, false),
+						//new DateValueFeatureSynthesizer("date"),
 						new LatinLanguageFeatureSynthesizer("author")
 					}),
 					new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false)
