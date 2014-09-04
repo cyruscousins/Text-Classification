@@ -110,10 +110,10 @@ namespace TextCharacteristicLearner
 
 		//Text preprocessor functions
 		public static string ProcessEnglishText(string s){
-			return s.RegexReplace (@"[^a-zA-Z0-9àèìòùÀÈÌÒÙäëïöüÄËÏÖÜ.,;:!?""'`“”/\\-]+", ""); //TODO: . in [] is not a special character?
+			return s.RegexReplace (@"[^a-zA-Z0-9àèìòùÀÈÌÒÙäëïöüÄËÏÖÜ.,;:!?""'`“”/\\ \n\t-]+", ""); //TODO: . in [] is not a special character?
 		}
 		public static string ProcessSpanishText(string s){
-			return s.RegexReplace (@"[^a-zA-Z0-9áéíóúü'ÁÉÍÓÚüÜñÑ.,;:""'`¡!¿?""“”«»/\\-]+", "");
+			return s.RegexReplace (@"[^a-zA-Z0-9áéíóúü'ÁÉÍÓÚüÜñÑ.,;:""'`¡!¿?""“”«»/\\ \n\t-]+", "");
 		}
 	}
 }

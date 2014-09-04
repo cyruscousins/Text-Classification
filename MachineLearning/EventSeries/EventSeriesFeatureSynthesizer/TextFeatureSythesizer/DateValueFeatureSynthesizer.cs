@@ -32,7 +32,9 @@ namespace TextCharacteristicLearner
 			if(item.labels.TryGetValue(ClassificationCriterion, out date)){
 				try{
 					int[] split = date.Split('-').Select(term => Int32.Parse (term)).ToArray();
-					return new[]{new DateTime(split[0], split[1], split[2]).Ticks / (10000000.0 * 60 * 60 * 24)}; //ticks are 100 ns.  This converts to days.
+					return new[]{
+						(new DateTime(split[0], split[1], split[2]).Ticks - new DateTime(2000, 1, 1).Ticks) / (10000000.0 * 60 * 60 * 24 * 365.25)
+					}; //ticks are 100 ns.  This converts to years since 2000.  Leap years are only partially handled.
 				}
 				catch(Exception e){
 					//TODO: respond to this error.

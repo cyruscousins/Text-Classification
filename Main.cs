@@ -18,16 +18,16 @@ namespace TextCharacteristicLearner
 		public static int Main (string[] args)
 		{
 
-			bool runClassification = false;
+			bool runClassification = true;
 			bool runDerivation = true;
 
 			//TODO: USE THESE!
 			string outDirectory = null;
 			string inFile = null;
 
-			int count = 1000;
+			int count = 500;
 
-			int iterations = 2;
+			int iterations = 1;
 
 			string[] options = "-c;-d;-n;-i;-h".Split (';');
 			string[] descriptions = "Run classification;Run classifier derivation;Number of instances to use (0 for all);Set the number of accuracy analysis iterations;Display this helpful message".Split (';');
@@ -220,17 +220,45 @@ namespace TextCharacteristicLearner
 
 		}
 
+		//NAME PROCESSING:
+			
+	    static string NameCase (string value)
+		{
+			char[] array = value.ToCharArray ();
+			//First
+			if (array.Length >= 1) {
+				if (char.IsLower (array [0])) {
+					array [0] = char.ToUpper (array [0]);
+				}
+			}
+			//Rest
+			for (int i = 1; i < array.Length; i++) {
+				if (array [i - 1] == ' ') {
+					if (char.IsLower (array [i])) {
+						array [i] = char.ToUpper (array[i]);
+					}
+				}
+				else if(char.IsUpper (array[i])){
+					array[i] = char.ToLower (array[i]);
+				}
+			}
+			return new string (array);
+		}
+
 		private static HashSet<String> invalidAuthors = new HashSet<string>("Porst Report;Posr Report;Post Reoprt;Post Repoert;Post Report;Post Repo-rt;POST REPORT;POST REPORT \'environmental Laws Adequate, Implementation Weak\';POST REPORT P\';POST REPORT, POST REPORT;Post Repot;Post Reprot;Post Rerport;Post Roport;Post Team;PR;Pr);(pr);PR, PR;RSS;;Rss.;(rss;(rss)".Split (';'));
 		private static Dictionary<string, string> manualRenames = 
 			"Priyakur Mandav:Priyankur Mandav;Milanmani Sharma:Milan Mani Sharma;Dr Sudhamshu K C:Dr Sudhamshu K.c.;Shrsisti_Shrestha;Shristi_Shrestha;Thomas_L._Friedman;Thomas_L_Friedman;William_Pfaff:William_Pfaf;Shandip_K C:Shandip_K.c.;Shandip_Kc:Shandip_K.c.;William_Pesek_Jr:Williar_Pesek_Jr.;William_Pesekjr:Williar_Pesek_Jr.;Prbhakar_Ghimire:Prabhakar_Ghimire;Himesh_Barjrachrya:Himesh_Bajracharya;Tapas_Barshimha_Thapa:Tapas_Barsimha_Thapa".Replace ("_", @" ").Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
 			//new Dictionary<string, string>();
 		private static Dictionary<string, string> manualLocationRenames =
 			"KATHMANDDU:KATHMANDU;KATHAMNDU:KATHMANDU".Split (";:".ToCharArray()).AdjacentPairs().ToDictionary(tup => tup.Item1, tup =>tup.Item2);
+		private static HashSet<string> maleNames = new HashSet<string>(
+			"ajaya;dhruva;dhruba;dipenra;krishna;lava;pierre;rishi;serge;shambhu;shashi;shiva;siddhi".Split (';')
+		);
 		private static HashSet<string> femaleNames = new HashSet<string>(
-			"barbara;catherine;ellen;jamie;jasmine;sheryl;sue;karen;kathy".Split (';')
+			"anjali;ann;anne;barbara;catherine;ellen;indu;jamie;jasmine;neeyati;sheryl;sue;karen;kathy;betty;ellen;gitanjali;ishwori;jan;jennifer;jill;laurie;manjushree;maureen;neeti;neeyati;sheryl;shristi;;N;bijaya;ah;chandra;jaya;hira;indra;jos;merrick;mvemba;nitya;padma;prakriti".Split (';')
 		);
 		private static HashSet<string> neutralNames = new HashSet<string>(
-			"susan".Split (';')
+			"ang;susan".Split (';')
 		);
 		private static HashSet<string> titles = new HashSet<string>(
 			"dr;doctor;prof;professor".Split (';')
@@ -261,18 +289,31 @@ namespace TextCharacteristicLearner
 					//Console.WriteLine ("REMOVED " + author);
 					item.labels.Remove ("author");
 				} else {
-					item.labels ["author"] = author; //Put the formatting done above back into db
+					item.labels ["author"] = NameCase(author); //Put the formatting done above back into db
 
 					string[] authSplit = author.Split(' ');
 					string firstName = authSplit[0].ToLower ();
 					if(titles.Contains(firstName) && authSplit.Length > 1){
-						firstName = authSplit[1];
+						if(authSplit.Length == 2){
+							//Just a last name.
+							firstName = "a"; //Will be marked neutral.
+						}
+						else{
+							firstName = authSplit[1];
+						}
 					}
-					if(neutralNames.Contains(firstName) || firstName.Length == 1){
 
+					if(neutralNames.Contains(firstName) || firstName.Length == 1){
+						//Gender unknown
 					}
-					else if(firstName[firstName.Length - 1] == 'a' || femaleNames.Contains(firstName)){
+					else if(maleNames.Contains (firstName) || firstName.EndsWith ("ndra")){
+						item.labels["gender"] = "male";
+					}
+					else if(firstName[firstName.Length - 1] == 'a' || firstName.EndsWith ("ee") || femaleNames.Contains(firstName)){
 						item.labels["gender"] = "female";
+					}
+					else if("eiou".Contains (firstName[firstName.Length - 1])){
+						//Gender unknown (suspected female)
 					}
 					else if(firstName.Length > 1){
 						item.labels["gender"] = "male";
@@ -283,6 +324,7 @@ namespace TextCharacteristicLearner
 				if (item.labels.ContainsKey ("location")){
 					item.labels ["location"] = item.labels ["location"].Replace ("_", " ").RegexReplace ("([#$&])", "\\$1");
 					item.labels ["location"] = manualLocationRenames.GetWithDefault (item.labels["location"], item.labels["location"]);
+					item.labels ["location"] = NameCase (item.labels ["location"]);
 				}
 			}
 

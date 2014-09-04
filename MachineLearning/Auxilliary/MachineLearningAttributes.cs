@@ -332,7 +332,7 @@ namespace TextCharacteristicLearner
 					return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectString (item), @"$\mathlarger\langle$", @"$\mathlarger\rangle$", ", ");
 				}
 //				return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectLatexString (item), "\\begin{easylist}[enumerate]\n\\item ", "\n\\end{easylist}", "\n\\item ");
-				return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectLatexString (item), "\n\\begin{enumerate}\n\\item ", "\n\\end{enumerate}", "\n\\item ");
+				return genericType.Name + "[" + enumerable.Count() + "]: " + enumerable.FoldToString(item => ObjectLatexString (item), "\n\\begin{enumerate}[1)]\n\\item ", "\n\\end{enumerate}", "\n\\item ");
 			}
 			if(o is double){
 				double d = (double)o;

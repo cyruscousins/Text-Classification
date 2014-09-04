@@ -204,7 +204,7 @@ namespace TextCharacteristicLearner
 				case PerceptronTrainingMode.TRAIN_ALL_DATA:
 				{
 					//TODO Don't shuffle every time.  Highly inefficient.
-					perceptrons = Enumerable.Range (0, perceptronCount).Select (val => 
+					perceptrons = Enumerable.Range (0, perceptronCount).AsParallel ().Select (val => 
 						{
 							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classesToTake (rand)).ToArray ();
 							Perceptron perceptron = buildPerceptronForAllData(trainingData.Shuffle().Select (instance => 
@@ -223,7 +223,7 @@ namespace TextCharacteristicLearner
 					foreach(IGrouping<int, LabeledInstance> grp in byLabel){ //TODO: Might be nice to have a higher order for this, like ToDictionary but with first type an int.
 						classCounts[grp.Key] = grp.Count ();
 					}
-					perceptrons = Enumerable.Range (0, perceptronCount).Select (index => 
+					perceptrons = Enumerable.Range (0, perceptronCount).AsParallel ().Select (index => 
 				        {	
 							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classesToTake (rand)).ToArray(); //TODO: Don't shufle every time.
 							Perceptron perceptron = buildPerceptronEvenClassSizes(byLabel, new HashSet<int>(classIndices), classCounts.Min (), dimension);
@@ -239,7 +239,7 @@ namespace TextCharacteristicLearner
 					foreach(IGrouping<int, LabeledInstance> grp in byLabel){ //TODO: Might be nice to have a higher order for this, like ToDictionary but with first type an int.
 						classCounts[grp.Key] = grp.Count ();
 					}
-					perceptrons = Enumerable.Range (0, perceptronCount).Select (index => 
+					perceptrons = Enumerable.Range (0, perceptronCount).AsParallel ().Select (index => 
 				        {
 							int[] classIndices = Enumerable.Range (0, classes.Length).Shuffle ().Take(classesToTake (rand)).ToArray();
 							Perceptron perceptron = buildPerceptronEvenWeights(byLabel, new HashSet<int>(classIndices), classCounts, dimension);
