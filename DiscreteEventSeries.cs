@@ -52,21 +52,21 @@ namespace TextCharacteristicLearner
 		//
 		//Kmer fixed k multiset
 		//
-		public static void AddDiscreteEventSeriesKmer<Ty>(this Multiset<Kmer<Ty>> multiset, DiscreteEventSeries<Ty> series, uint k ){
+		public static void AddDiscreteEventSeriesKmer<Ty>(this Multiset<Kmer<Ty>> multiset, DiscreteEventSeries<Ty> series, int k ){
 			//Ty[] arr = series.data.ToArray();
 			Ty[] arr = series.data; //TODO: This is a decision.
-			for(uint i = 0; i <= arr.Length - k; i++){
+			for(int i = 0; i <= arr.Length - k; i++){
 				multiset.Add (new Kmer<Ty>(arr, i, k));
 			}
 		}
 
-		public static Multiset<Kmer<Ty>> ToMultisetKmer<Ty>(this DiscreteEventSeries<Ty> series, uint k){
+		public static Multiset<Kmer<Ty>> ToMultisetKmer<Ty>(this DiscreteEventSeries<Ty> series, int k){
 			Multiset<Kmer<Ty>> multiset = new Multiset<Kmer<Ty>>();
 			multiset.AddDiscreteEventSeriesKmer(series, k);
 			return multiset;
 		}
 		
-		public static Multiset<Kmer<Ty>> ToMultisetKmer<Ty>(this IEnumerable<DiscreteEventSeries<Ty>> series, uint k){
+		public static Multiset<Kmer<Ty>> ToMultisetKmer<Ty>(this IEnumerable<DiscreteEventSeries<Ty>> series, int k){
 			Multiset<Kmer<Ty>> multiset = new Multiset<Kmer<Ty>>();
 			series.ForEach (item => multiset.AddDiscreteEventSeriesKmer(item, k));
 			return multiset;
@@ -75,18 +75,18 @@ namespace TextCharacteristicLearner
 		//
 		//Kmer variadic k multiset
 		//
-		public static void AddDiscreteEventSeriesVarKmer<Ty>(this MultisetKmer<Ty> multiset, DiscreteEventSeries<Ty> series, uint k ){
+		public static void AddDiscreteEventSeriesVarKmer<Ty>(this MultisetKmer<Ty> multiset, DiscreteEventSeries<Ty> series, int k ){
 			Ty[] arr = series.data;
 			multiset.ConsumeEventSeriesKmer(arr);
 		}
 
-		public static MultisetKmer<Ty> ToMultisetVarKmer<Ty>(this DiscreteEventSeries<Ty> series, uint k){
+		public static MultisetKmer<Ty> ToMultisetVarKmer<Ty>(this DiscreteEventSeries<Ty> series, int k){
 			MultisetKmer<Ty> multiset = new MultisetKmer<Ty>(k);
 			multiset.AddDiscreteEventSeriesVarKmer(series, k);
 			return multiset;
 		}
 		
-		public static MultisetKmer<Ty> ToMultisetVarKmer<Ty>(this IEnumerable<DiscreteEventSeries<Ty>> series, uint k){
+		public static MultisetKmer<Ty> ToMultisetVarKmer<Ty>(this IEnumerable<DiscreteEventSeries<Ty>> series, int k){
 			MultisetKmer<Ty> multiset = new MultisetKmer<Ty>(k);
 			series.ForEach (item => multiset.AddDiscreteEventSeriesVarKmer(item, k));
 			return multiset;

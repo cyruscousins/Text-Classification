@@ -69,9 +69,9 @@ namespace TextCharacteristicLearner
 				File.WriteAllLines (outDirectory + "make.sh", 
 				    new[]{"#! /bin/bash", "", "bufsize = 10000000"}.Concat (
 					latexFiles.Select (item => latexProgram + " -draftmode " + item + ".tex" + " &")).Concat (
-					new[]{"", "wait", ""}).Concat (
+					new[]{"wait", ""}).Concat (
 					latexFiles.Select (item => latexProgram + " " + item + ".tex" + " &")).Concat (
-					new[]{"", "wait", ""}
+					new[]{"wait", "", "rm -f *.aux *.lof *.log *.out *.toc"}
 				)
 				);
 				//TODO make executable.
@@ -200,11 +200,11 @@ namespace TextCharacteristicLearner
 				Directory.CreateDirectory (outDirectory);
 				string[] latexFiles = "database;classifieroverview;classifications;classifieraccuracy;fullreport".Split (';');
 				File.WriteAllLines(outDirectory + "make.sh", 
-				    new[]{"#! /bin/bash", "", "bufsize = 10000000", "", "rm -f *.aux *.lof *.log *.out *.toc"}.Concat (
+				    new[]{"#! /bin/bash", "", "bufsize = 10000000", ""}.Concat (
 					latexFiles.Select (item => latexProgram + " -draftmode " + item + ".tex" + " &")).Concat (
-					new[]{"", "wait", ""}).Concat (
+					new[]{"wait", ""}).Concat (
 					latexFiles.Select (item => latexProgram + " " + item + ".tex" + " &")).Concat (
-					new[]{"", "wait", ""}
+					new[]{"wait", "", "rm -f *.aux *.lof *.log *.out *.toc"}
 					)
 				);
 				//TODO make executable.
@@ -356,7 +356,7 @@ namespace TextCharacteristicLearner
 
 \maketitle
 \tableofcontents
-\listoffigures
+%\listoffigures
 \pagebreak[4]
 
 

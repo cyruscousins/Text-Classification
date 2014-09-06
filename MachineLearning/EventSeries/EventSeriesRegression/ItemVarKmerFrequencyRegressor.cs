@@ -9,16 +9,16 @@ namespace TextCharacteristicLearner
 	public class ItemVarKmerFrequencyRegressor<A> : IEventSeriesScalarRegressor<A>
 	{
 		ItemFrequencyRegressor<Kmer<A>> regressor;
-		uint maxK;
+		int maxK;
 
-		public ItemVarKmerFrequencyRegressor (string name, uint minSignificantCount, uint smoothingAmount, uint featuresToUse, uint k)
+		public ItemVarKmerFrequencyRegressor (string name, int minSignificantCount, int smoothingAmount, int featuresToUse, int k)
 		{
 			regressor = new ItemFrequencyRegressor<Kmer<A>>(name, minSignificantCount, smoothingAmount, featuresToUse);
 			this.maxK = k;
 		}
 
 		
-		public ItemVarKmerFrequencyRegressor (string name, uint minSignificantCount, uint smoothingAmount, uint featuresToUse, uint k, MultisetKmer<A> baselineClass, MultisetKmer<A> thisClass) : this(name, minSignificantCount, smoothingAmount, featuresToUse, k)
+		public ItemVarKmerFrequencyRegressor (string name, int minSignificantCount, int smoothingAmount, int featuresToUse, int k, MultisetKmer<A> baselineClass, MultisetKmer<A> thisClass) : this(name, minSignificantCount, smoothingAmount, featuresToUse, k)
 		{
 			TrainModelRatios (baselineClass, thisClass);
 		}
@@ -34,9 +34,9 @@ namespace TextCharacteristicLearner
 			//TODO
 			List<KeyValuePair<Kmer<A>, double>> rawModel = new List<KeyValuePair<Kmer<A>, double>>();
 
-			uint totalCount = 0;
+			int totalCount = 0;
 			foreach(Kmer<A> key in thisClass.Keys){
-				uint thisCount = thisClass.getCount(key);
+				int thisCount = thisClass.getCount(key);
 				totalCount += thisCount;
 				if(thisCount > regressor.minSignificantCount){
 					double thisFrac = thisClass.GetKeyFrac(key);
@@ -53,9 +53,9 @@ namespace TextCharacteristicLearner
 		public void TrainModelRatios(MultisetKmer<A> baselineClass, MultisetKmer<A> thisClass){
 			List<KeyValuePair<Kmer<A>, double>> rawModel = new List<KeyValuePair<Kmer<A>, double>>();
 
-			uint totalCount = 0;
+			int totalCount = 0;
 			foreach(Kmer<A> key in thisClass.Keys){
-				uint thisCount = thisClass.getCount(key);
+				int thisCount = thisClass.getCount(key);
 				totalCount += thisCount;
 				if(thisCount > regressor.minSignificantCount){
 					double thisFrac = thisClass.GetKeyFrac(key);
@@ -72,7 +72,7 @@ namespace TextCharacteristicLearner
 		//Regression.
 		public double RegressEventSeries(DiscreteEventSeries<A> series){
 			double score = 0;
-			for(uint k = 1; k <= maxK; k++){ //For locality!
+			for(int k = 1; k <= maxK; k++){ //For locality!
 				Multiset<Kmer<A>> ms = series.ToMultisetKmer (k);
 				score += regressor.RegressEventSeries(ms);
 			}

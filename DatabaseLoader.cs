@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.IO.Compression;
 
 using Whetstone;
 
@@ -34,8 +35,13 @@ namespace TextCharacteristicLearner
 			string s = inStream.ReadToEnd ();
 			string[] entries = s.Split (newLine, StringSplitOptions.RemoveEmptyEntries);
 
+			//TODO: Zip archive version of the following.
+
 			//Read each file
-			List<DiscreteEventSeries<string>> items = entries.AsParallel().Select(entry => processEntry(directory, entry, logLevel, textProcessor)).Where (entry => entry != null).ToList ();
+			List<DiscreteEventSeries<string>> items = entries.AsParallel().Select(entry => {
+				Dictionary<string, string> entryDict = processEntryLine(entry, logLevel);
+				return processEntryFromFile(directory, entryDict, logLevel, textProcessor);
+			}).Where (entry => entry != null).ToList ();
 
 			fileData.AddRange (items);
 
@@ -56,14 +62,13 @@ namespace TextCharacteristicLearner
 			}
 		}
 
-		public static DiscreteEventSeries<string> processEntry(string directory, string entry, int logLevel, Func<string, string> textProcessor){
-			//Console.WriteLine ("Processing: " + entry);
-
+		//This function when called shall produce a dictionary mapping all available criteria to the label provided in the input string.  The format is:
+		//FILENAME CRITERION:FILE
+		public static Dictionary<string, string> processEntryLine(string entry, int logLevel){
 			//Split into info and path
 			string[] line = entry.Split (' ');
 
 			string tagsInfo = line[0];
-			string filePath = directory + line[1];
 
 			string[] tagsInfoSplit = tagsInfo.Split (";:".ToCharArray());
 
@@ -80,17 +85,41 @@ namespace TextCharacteristicLearner
 			//Add the filepath to the dictionary too.
 			tags.Add ("filename", line[1]);
 
+			return tags;
+		}
+
+		public static DiscreteEventSeries<string> processEntryFromFile(string directory, Dictionary<string, string> tags, int logLevel, Func<string, string> textProcessor){
+
 			//Load the file as a set of words
+			string filePath = directory + tags["filename"];
 
 			//Add the file as an entry to the database.
 			using (StreamReader sr = File.OpenText(filePath)) {
-				string[] words = DatabaseLoader.loadWordFileRaw (sr, textProcessor);
-				DiscreteEventSeries<string> file = new DiscreteEventSeries<string>(tags, words);
-
-				if(logLevel >= 2) Console.WriteLine ("Read " + tags.FoldToString (item => item.Key + ":" + item.Value) + ": " + words.Length + " words.");
-
-				return file;
+				return loadEntry (tags, sr, logLevel, textProcessor);
 			}
+		}
+		
+		//TODO .NET 4.5 only.
+		/*
+		public static DiscreteEventSeries<string> processEntryFromZipArchive (ZipArchive archive, Dictionary<string, string> tags, string entry, int logLevel, Func<string, string> textProcessor){
+
+			//Load the file as a set of words
+			string filePath = directory + tags["filename"];
+
+			//Add the file as an entry to the database.
+			using (StreamReader sr = File.OpenText(filePath)) {
+				return loadEntry (tags, sr, logLevel, textProcessor);
+			}
+		}
+		*/
+
+		public static DiscreteEventSeries<string> loadEntry(Dictionary<string, string> tags, StreamReader streamReader, int logLevel, Func<string, string> textProcessor){
+			string[] words = DatabaseLoader.loadWordFileRaw (streamReader, textProcessor);
+			DiscreteEventSeries<string> file = new DiscreteEventSeries<string>(tags, words);
+
+			if(logLevel >= 2) Console.WriteLine ("Read " + tags.FoldToString (item => item.Key + ":" + item.Value) + ": " + words.Length + " words.");
+
+			return file;
 		}
 
 

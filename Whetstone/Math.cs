@@ -40,12 +40,6 @@ namespace Whetstone
 			return sum;
 		}
 
-		
-		//C# discriminates against the uint type.
-		public static uint Sum(this IEnumerable<uint> items){
-			return items.Aggregate ((uint)0, (sum, val) => sum + val);
-		}
-
 		public static double[] VectorMean(this IEnumerable<IList<double>> vectors){
 			double[] result = new double[vectors.First ().Count];
 

@@ -54,12 +54,12 @@ namespace TextCharacteristicLearner
 	public class RegressorFeatureSynthesizerFrequencies<Ty> : RegressorFeatureSynthesizer<Ty> {
 
 		//Model Parameters:
-		uint minSignificantCount;
-		uint smoothingAmount;
-		uint featuresToUse;
+		int minSignificantCount;
+		int smoothingAmount;
+		int featuresToUse;
 
 		//Constructor sets model parameters
-		public RegressorFeatureSynthesizerFrequencies (string categoryLabel, uint minSignificantCount, uint smoothingAmount, uint featuresToUse) : base(categoryLabel)
+		public RegressorFeatureSynthesizerFrequencies (string categoryLabel, int minSignificantCount, int smoothingAmount, int featuresToUse) : base(categoryLabel)
 		{
 			this.minSignificantCount = minSignificantCount;
 			this.smoothingAmount = smoothingAmount;
@@ -91,13 +91,13 @@ namespace TextCharacteristicLearner
 	public class RegressorFeatureSynthesizerKmerFrequencies<Ty> : RegressorFeatureSynthesizer<Ty> {
 
 		//Model Parameters:
-		uint k;
-		uint minSignificantCount;
-		uint smoothingAmount;
-		uint featuresToUse;
+		int k;
+		int minSignificantCount;
+		int smoothingAmount;
+		int featuresToUse;
 
 		//Constructor sets model parameters
-		public RegressorFeatureSynthesizerKmerFrequencies (string categoryLabel, uint minSignificantCount, uint smoothingAmount, uint featuresToUse, uint k) : base(categoryLabel)
+		public RegressorFeatureSynthesizerKmerFrequencies (string categoryLabel, int minSignificantCount, int smoothingAmount, int featuresToUse, int k) : base(categoryLabel)
 		{
 			this.minSignificantCount = minSignificantCount;
 			this.smoothingAmount = smoothingAmount;
@@ -129,13 +129,13 @@ namespace TextCharacteristicLearner
 	public class RegressorFeatureSynthesizerKmerFrequenciesVarK<Ty> : RegressorFeatureSynthesizer<Ty> {
 
 		//Model Parameters:
-		uint k;
-		uint minSignificantCount;
-		uint smoothingAmount;
-		uint featuresToUse;
+		int k;
+		int minSignificantCount;
+		int smoothingAmount;
+		int featuresToUse;
 
 		//Constructor sets model parameters
-		public RegressorFeatureSynthesizerKmerFrequenciesVarK (string categoryLabel, uint minSignificantCount, uint smoothingAmount, uint featuresToUse, uint k) : base(categoryLabel)
+		public RegressorFeatureSynthesizerKmerFrequenciesVarK (string categoryLabel, int minSignificantCount, int smoothingAmount, int featuresToUse, int k) : base(categoryLabel)
 		{
 			this.minSignificantCount = minSignificantCount;
 			this.smoothingAmount = smoothingAmount;
@@ -175,12 +175,12 @@ namespace TextCharacteristicLearner
 	 * 
 	public class ClassBasedFeatureSynthesizerKmer<Tyvar>
 	{
-		uint k;
+		int k;
 		public string name;
 		public string categoryName;
 		public IEnumerable<ClassCharacteristicSetKmer<Tyvar>> classes;
 
-		public ClassBasedFeatureSynthesizerKmer (uint k, string name, string labelCategory, IEnumerable<ClassCharacteristicSetKmer<Tyvar>> classes)
+		public ClassBasedFeatureSynthesizerKmer (int k, string name, string labelCategory, IEnumerable<ClassCharacteristicSetKmer<Tyvar>> classes)
 		{
 			this.k = k;
 			this.name = name;

@@ -14,13 +14,13 @@ namespace TextCharacteristicLearner
 	{
 		//PUBLIC DATA
 		[AlgorithmParameterAttribute("k", 0)]
-		public uint k;
+		public int k;
 		
 		[AlgorithmParameterAttribute("minimum significance threshold", 1)]
-		public uint minKmerCount;
+		public int minKmerCount;
 		
 		[AlgorithmParameterAttribute("number of kmers to use", 2)]
-		public uint kmersToTake;
+		public int kmersToTake;
 		
 		[AlgorithmParameterAttribute("Laplacian smoothing amount", 3)]
 		public double smoothingAmt;
@@ -52,7 +52,7 @@ namespace TextCharacteristicLearner
 			}}
 
 		//Constructor
-		public VarKmerFrequencyFeatureSynthesizer(string criterion, uint k){
+		public VarKmerFrequencyFeatureSynthesizer(string criterion, int k){
 			this.ClassificationCriterion = criterion;
 			this.k = k;
 			
@@ -62,7 +62,7 @@ namespace TextCharacteristicLearner
 			useUncategorizedForBaseline = false;
 		}
 
-		public VarKmerFrequencyFeatureSynthesizer(string criterion, uint k, uint minKmerCount, uint kmersToTake, double smoothingAmt, bool useUncategorizedForBaseline, bool discardEmptyFeatures = false){
+		public VarKmerFrequencyFeatureSynthesizer(string criterion, int k, int minKmerCount, int kmersToTake, double smoothingAmt, bool useUncategorizedForBaseline, bool discardEmptyFeatures = false){
 			this.ClassificationCriterion = criterion;
 			this.k = k;
 
@@ -135,7 +135,7 @@ namespace TextCharacteristicLearner
 				//All the kmers found in this class.
 				TupleStruct<string, MultisetKmer<Ty>> thisClass = classes[classIndex];
 				List<TupleStruct<Kmer<Ty>, double>> thisClassCharacteristicKmersStore = new List<TupleStruct<Kmer<Ty>, double>>(); 
-				foreach(KeyValuePair<Kmer<Ty>, uint> kvp in thisClass.Item2){
+				foreach(KeyValuePair<Kmer<Ty>, int> kvp in thisClass.Item2){
 					if(kvp.Value > minKmerCount){
 						double thisFreq = kvp.Value / (double) thisClass.Item2.Size (kvp.Key.data.Count);
 						double baseFreq = baseline.GetKeyFracLaplace(kvp.Key, smoothingAmt);
@@ -227,7 +227,7 @@ namespace TextCharacteristicLearner
 		//Extract characteristic kmers (top n more common than baseline that occur at least q times).
 		private IEnumerable<TupleStruct<Kmer<Ty>, double>> ExtractCharacteristicKmersForClass(int classIndex, MultisetKmer<Ty> thisClass, MultisetKmer<Ty> baseline){
 			List<TupleStruct<Kmer<Ty>, double>> thisClassCharacteristicKmersStore = new List<TupleStruct<Kmer<Ty>, double>>(); 
-			foreach(KeyValuePair<Kmer<Ty>, uint> kvp in thisClass){
+			foreach(KeyValuePair<Kmer<Ty>, int> kvp in thisClass){
 				if(kvp.Value > minKmerCount){
 					double thisFreq = kvp.Value / (double) thisClass.Size (kvp.Key.Count);
 					double baseFreq = baseline.GetKeyFracLaplace(kvp.Key, smoothingAmt);
@@ -262,7 +262,7 @@ namespace TextCharacteristicLearner
 
 			MultisetKmer<Ty> ms = item.ToMultisetVarKmer<Ty>(k);
 
-			foreach(KeyValuePair<Kmer<Ty>, uint> kvp in ms){
+			foreach(KeyValuePair<Kmer<Ty>, int> kvp in ms){
 				Dictionary<int, double> classesWithKvp;
 				if(learnedCharacteristicKmers.TryGetValue (kvp.Key, out classesWithKvp)){
 					//Console.WriteLine ("\tFound kmer " + kvp.Key + ".");

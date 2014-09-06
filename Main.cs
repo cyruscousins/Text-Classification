@@ -25,7 +25,7 @@ namespace TextCharacteristicLearner
 			string outDirectory = null;
 			string inFile = null;
 
-			int count = 500;
+			int count = 100;
 
 			int iterations = 1;
 
@@ -362,7 +362,7 @@ namespace TextCharacteristicLearner
 
 			IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> classifiers = TextClassifierFactory.NewsTestClassifiers().Concat(TextClassifierFactory.NewsTestAdvancedClassifiers().Skip (1));
 			IFeatureSynthesizer<string> synth = new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
-				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.1, false),
+				new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 60, 0.7, false),
 				new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 3, 50, 1, false),
 				new VarKmerFrequencyFeatureSynthesizer<string>("gender", 3, 8, 50, 10, false),
 				new DateValueFeatureSynthesizer("date"),
@@ -400,20 +400,20 @@ namespace TextCharacteristicLearner
 
 			//Preliminary scan
 			
-			uint[] ks = new uint[]{2, 3, 4};
-			//uint[] minCutoffs = new uint[]{5, 10, 20};
-			uint[] minCutoffs = new uint[]{10};
-			uint[] kmerCounts = new uint[]{10, 25, 50, 100};
-			uint[] smoothingAmounts = new uint[]{1, 5, 10};
+			int[] ks = new int[]{2, 3, 4};
+			//int[] minCutoffs = new int[]{5, 10, 20};
+			int[] minCutoffs = new int[]{10};
+			int[] kmerCounts = new int[]{10, 25, 50, 100};
+			int[] smoothingAmounts = new int[]{1, 5, 10};
 
 			string[] colNames = "k minCutoff kmerCount smoothingAmount score".Split (' ');
 
 			Console.WriteLine (colNames.FoldToString ("", "", ","));
 
-			foreach(uint k in ks){
-				foreach(uint minCutoff in minCutoffs){
-					foreach(uint kmerCount in kmerCounts){
-						foreach(uint smoothingAmount in smoothingAmounts){
+			foreach(int k in ks){
+				foreach(int minCutoff in minCutoffs){
+					foreach(int kmerCount in kmerCounts){
+						foreach(int smoothingAmount in smoothingAmounts){
 
 							IFeatureSynthesizer<string> classifier = new RegressorFeatureSynthesizerKmerFrequenciesVarK<string>(cat, minCutoff, smoothingAmount, kmerCount, k);
 							classifier.Train (trainingData);

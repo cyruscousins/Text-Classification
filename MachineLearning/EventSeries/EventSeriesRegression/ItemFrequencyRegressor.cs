@@ -19,16 +19,16 @@ namespace TextCharacteristicLearner
 		public string label{get {return name;}}
 
 		//Model Parameters:
-		public uint minSignificantCount{get; private set;}
-		public uint smoothingAmount{get; private set;}
-		public uint featuresToUse{get; private set;}
+		public int minSignificantCount{get; private set;}
+		public int smoothingAmount{get; private set;}
+		public int featuresToUse{get; private set;}
 
 		//Derived from Model Data (Train function)
 		protected Dictionary<A, double> characteristics;
-		public uint trainingDataSize;
+		public int trainingDataSize;
 
 		//Constructor sets model parameters
-		public ItemFrequencyRegressor (string name, uint minSignificantCount, uint smoothingAmount, uint featuresToUse)
+		public ItemFrequencyRegressor (string name, int minSignificantCount, int smoothingAmount, int featuresToUse)
 		{
 			this.name = name;
 			this.minSignificantCount = minSignificantCount;
@@ -39,7 +39,7 @@ namespace TextCharacteristicLearner
 		}
 
 		//Constructor with build in training.
-		public ItemFrequencyRegressor(string name, uint minSignificantCount, uint smoothingAmount, uint featuresToUse, Multiset<A> baselineClass, Multiset<A> thisClass) : this(name, minSignificantCount, smoothingAmount, featuresToUse){
+		public ItemFrequencyRegressor(string name, int minSignificantCount, int smoothingAmount, int featuresToUse, Multiset<A> baselineClass, Multiset<A> thisClass) : this(name, minSignificantCount, smoothingAmount, featuresToUse){
 			TrainModelRatios(baselineClass, thisClass);
 		}
 
@@ -50,9 +50,9 @@ namespace TextCharacteristicLearner
 		public void TrainModelSubtractive(Multiset<A> baselineClass, Multiset<A> thisClass){
 			List<KeyValuePair<A, double>> rawModel = new List<KeyValuePair<A, double>>();
 
-			uint totalCount = 0;
+			int totalCount = 0;
 			foreach(A key in thisClass.Keys){
-				uint thisCount = thisClass.getCount(key);
+				int thisCount = thisClass.getCount(key);
 				totalCount += thisCount;
 				if(thisCount > minSignificantCount){
 					double thisFrac = thisClass.GetKeyFrac(key);
@@ -69,9 +69,9 @@ namespace TextCharacteristicLearner
 		public void TrainModelRatios(Multiset<A> baselineClass, Multiset<A> thisClass){
 			List<KeyValuePair<A, double>> rawModel = new List<KeyValuePair<A, double>>();
 
-			uint totalCount = 0;
+			int totalCount = 0;
 			foreach(A key in thisClass.Keys){
-				uint thisCount = thisClass.getCount(key);
+				int thisCount = thisClass.getCount(key);
 				totalCount += thisCount;
 				if(thisCount > minSignificantCount){
 					double thisFrac = thisClass.GetKeyFrac(key);
@@ -85,7 +85,7 @@ namespace TextCharacteristicLearner
 			finalizeModel (rawModel, totalCount);
 		}
 
-		public void finalizeModel(IEnumerable<KeyValuePair<A, double>> rawModel, uint rawCount){
+		public void finalizeModel(IEnumerable<KeyValuePair<A, double>> rawModel, int rawCount){
 			double scale = 1 + Math.Log10 (rawCount);
 			foreach(KeyValuePair<A, double> pair in rawModel.TopUnordered((int)featuresToUse)){
 				characteristics.Add(pair.Key, pair.Value * scale);

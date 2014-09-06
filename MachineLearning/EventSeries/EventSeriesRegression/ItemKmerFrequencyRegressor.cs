@@ -11,14 +11,14 @@ namespace TextCharacteristicLearner
 	public class ItemKmerFrequencyRegressor<A> : IEventSeriesScalarRegressor<A>
 	{
 		ItemFrequencyRegressor<Kmer<A>> regressor;
-		uint k;
-		public ItemKmerFrequencyRegressor (string name, uint minSignificantCount, uint smoothingAmount, uint featuresToUse, uint k)
+		int k;
+		public ItemKmerFrequencyRegressor (string name, int minSignificantCount, int smoothingAmount, int featuresToUse, int k)
 		{
 			regressor = new ItemFrequencyRegressor<Kmer<A>>(name, minSignificantCount, smoothingAmount, featuresToUse);
 			this.k = k;
 		}
 		
-		public ItemKmerFrequencyRegressor (string name, uint minSignificantCount, uint smoothingAmount, uint featuresToUse, uint k, Multiset<Kmer<A>> baselineClass, Multiset<Kmer<A>> thisClass) : this(name, minSignificantCount, smoothingAmount, featuresToUse, k)
+		public ItemKmerFrequencyRegressor (string name, int minSignificantCount, int smoothingAmount, int featuresToUse, int k, Multiset<Kmer<A>> baselineClass, Multiset<Kmer<A>> thisClass) : this(name, minSignificantCount, smoothingAmount, featuresToUse, k)
 		{
 			TrainModelRatios (baselineClass, thisClass);
 		}

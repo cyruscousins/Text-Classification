@@ -10,10 +10,10 @@ using Whetstone;
 namespace TextCharacteristicLearner
 {
 
-	public class Multiset<Tyvar> : Dictionary<Tyvar, uint>, EventSeriesConsumer<Tyvar>
+	public class Multiset<Tyvar> : Dictionary<Tyvar, int>, EventSeriesConsumer<Tyvar>
 	{
 
-		public uint size = 0;
+		public int size = 0;
 
 		public Multiset(){
 
@@ -28,15 +28,14 @@ namespace TextCharacteristicLearner
 		}
 
 		public void Add(Tyvar s){
-			uint val;
+			int val;
 			TryGetValue(s, out val);
 			this[s] = val + 1;
 			size ++;
 		}
 
-		//TODO: Rename to AddMulti
-		public void Add(Tyvar s, uint count){
-			uint val;
+		public void AddMulti(Tyvar s, int count){
+			int val;
 			TryGetValue(s, out val);
 			this[s] = val + count;
 			size += count;
@@ -50,8 +49,8 @@ namespace TextCharacteristicLearner
 			Add (s);
 		}
 
-		public uint getCount(Tyvar s){
-			uint ret;
+		public int getCount(Tyvar s){
+			int ret;
 			TryGetValue (s, out ret);
 			return ret;
 		}
@@ -68,7 +67,7 @@ namespace TextCharacteristicLearner
 			return ((double)getCount (val) + smooth) / ((double)size + smooth); //TODO is this laplacian smoothing?
 		}
 
-		public void putVal(Tyvar s, uint val){
+		public void putVal(Tyvar s, int val){
 			base[s] = val;
 		}
 
@@ -104,14 +103,10 @@ namespace TextCharacteristicLearner
 			return d;		
 		}
 
-		public static void AddKmers<A>(this Multiset<Kmer<A>> thisSet, IEnumerable<A> toAdd, uint k){
+		public static void AddKmers<A>(this Multiset<Kmer<A>> thisSet, IEnumerable<A> toAdd, int k){
 			A[] toAddArr = toAdd.ToArray ();
-			
-			if(toAddArr.Length < k){
-				return;
-			}
 
-			for(uint i = 0; i < toAddArr.Length - k; i++){
+			for(int i = 0; i < toAddArr.Length - k; i++){
 				thisSet.Add (new Kmer<A>(toAddArr, i, k));
 			}
 		}

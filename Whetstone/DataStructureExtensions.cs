@@ -7,11 +7,11 @@ namespace Whetstone
 {
 	public static class ArrayUtilities{
 
-		public static A[] SliceCopy<A>(this A[] inArr, uint start, uint len){
+		public static A[] SliceCopy<A>(this A[] inArr, int start, int len){
 			return Slice(inArr, start, len).ToArray();
 		}
 
-		public static ArraySlice_t<A> Slice<A>(this A[] inArr, uint start, uint len){
+		public static ArraySlice_t<A> Slice<A>(this A[] inArr, int start, int len){
 			return new ArraySlice_t<A>(inArr, start, len);
 		}
 	}

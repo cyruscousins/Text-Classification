@@ -104,8 +104,12 @@ namespace TextCharacteristicLearner
 			return nameAttributes [0].AlgorithmName;
 		}
 
-		public static string GetAlgorithmName(Object model){
+		public static string GetAlgorithmName(object model){
 			return GetAlgorithmName(model.GetType());
+		}
+
+		public static string GetAlgorithmName<Ty>(this IEventSeriesProbabalisticClassifier<Ty> model){
+			return GetAlgorithmName((object)model);
 		}
 
 		public static IEnumerable<Tuple<FieldInfo, AttrTy>> GetFieldCustomAttributes<AttrTy>(this Type ty, bool inherit){

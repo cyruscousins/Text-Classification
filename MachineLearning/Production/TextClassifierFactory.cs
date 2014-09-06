@@ -12,7 +12,7 @@ namespace TextCharacteristicLearner
 			IFeatureSynthesizer<string> synthesizer = new CompoundFeatureSynthesizer<string>(
 				criterion,
 				new IFeatureSynthesizer<string>[]{
-					//string criterion, uint k, uint minKmerCount, uint kmersToTake, double smoothingAmt, bool useUncategorizedForBaseline
+					//string criterion, int k, int minKmerCount, int kmersToTake, double smoothingAmt, bool useUncategorizedForBaseline
 					//new VarKmerFrequencyFeatureSynthesizerToRawFrequencies<string>(criterion, 2, 2, 8, .1, false),
 					//new LatinLanguageFeatureSynthesizer(criterion),
 					new VarKmerFrequencyFeatureSynthesizer<string>(criterion, 2, 2, 32, 1, false)
@@ -260,10 +260,10 @@ namespace TextCharacteristicLearner
 		}
 
 		public static IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> NewsTestClassifiers(){
-			uint k = 3;
-			uint minCutoff = 2;
-			uint kmersToTake = 50;
-			double smoothing = 0.6;
+			int k = 3;
+			int minCutoff = 2;
+			int kmersToTake = 60;
+			double smoothing = 0.7;
 			IEventSeriesProbabalisticClassifier<string>[] classifiers = new []{
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
 					new VarKmerFrequencyFeatureSynthesizer<string>("author", k, minCutoff, kmersToTake, smoothing, false),
@@ -332,7 +332,7 @@ namespace TextCharacteristicLearner
 		
 		public static IEnumerable<Tuple<string, IEventSeriesProbabalisticClassifier<string>>> NewsTestAdvancedClassifiers(){
 
-			Func<VarKmerFrequencyFeatureSynthesizer<string>> authorFactory = () => new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 50, 0.6, false);
+			Func<VarKmerFrequencyFeatureSynthesizer<string>> authorFactory = () => new VarKmerFrequencyFeatureSynthesizer<string>("author", 3, 2, 60, 0.7, false);
 
 			IEventSeriesProbabalisticClassifier<string>[] classifiers = new []{
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
@@ -352,6 +352,17 @@ namespace TextCharacteristicLearner
 						new LatinLanguageFeatureSynthesizer("author")
 					}),
 					new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_ALL_DATA, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false)
+				),
+				
+				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
+					new CompoundFeatureSynthesizer<string>("author", new IFeatureSynthesizer<string>[]{
+						authorFactory(),
+						new VarKmerFrequencyFeatureSynthesizer<string>("location", 3, 3, 50, 0.1, false),
+						new VarKmerFrequencyFeatureSynthesizer<string>("gender", 3, 8, 50, 10, false),
+						new DateValueFeatureSynthesizer("date"),
+						new LatinLanguageFeatureSynthesizer("author")
+					}),
+					new PerceptronCloud(16.0, PerceptronTrainingMode.TRAIN_EVEN_WEIGHTS, PerceptronClassificationMode.USE_NEGATIVES | PerceptronClassificationMode.USE_SCORES, 1.5, false)
 				),
 				/*
 				new SeriesFeatureSynthesizerToVectorProbabalisticClassifierEventSeriesProbabalisticClassifier<string>(
@@ -380,6 +391,7 @@ namespace TextCharacteristicLearner
 				"raw synth output",
 				"synth to perceptron cloud",
 				"features to perceptron cloud",
+				"features to perceptron cloud even weights",
 				//"ensemble"
 			};
 

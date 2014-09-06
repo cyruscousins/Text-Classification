@@ -314,18 +314,18 @@ namespace Whetstone{
 
 	public struct ArraySlice_t<A> : IEnumerable<A>{
 		public A[] Array; //TODO rename these?  They are the same as ArraySeg<A> right now.
-		public uint Count;
-		public uint StartIndex;
+		public int Count;
+		public int StartIndex;
 
-		public ArraySlice_t(A[] Arr, uint StartIndex, uint Count){
+		public ArraySlice_t(A[] Arr, int StartIndex, int Count){
 			this.Array = Arr;
 			this.Count = Count;
 			this.StartIndex = StartIndex;
 		}
 
 		public IEnumerator<A> GetEnumerator(){
-			uint endIndex = StartIndex + Count;
-			for(uint i = StartIndex; i < endIndex; i++){
+			int endIndex = StartIndex + Count;
+			for(int i = StartIndex; i < endIndex; i++){
 				yield return Array[i];
 			}
 		}
